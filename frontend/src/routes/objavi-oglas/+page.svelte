@@ -1,0 +1,430 @@
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import ImageUploadPreview from '$lib/ImageUploadPreview.svelte';
+	import LocationPicker from '$lib/LocationPicker.svelte';
+	import type { ListingType, PropertyType } from '$lib/types/property';
+	import type { AttributeField } from '$lib/properties/schema';
+	import type { SubmitFunction } from '@sveltejs/kit';
+
+	let { data, form } = $props();
+
+	const formErrors = $derived((form?.errors ?? {}) as Record<string, string>);
+
+	let step = $state(1);
+	let loading = $state(false);
+
+	let propertyType = $state<PropertyType | ''>('');
+	let listingType = $state<ListingType | ''>('');
+	let address = $state('');
+	let lat = $state<number | null>(null);
+	let lng = $state<number | null>(null);
+
+	let stepErrors = $state<Record<string, string>>({});
+	let imageFiles = $state<File[]>([]);
+
+	const coreFields = $derived(
+		propertyType ? data.coreOptionalFields[propertyType as PropertyType] : null
+	);
+	const attributeFields = $derived(
+		propertyType ? data.attributeFieldsByType[propertyType as PropertyType] : []
+	);
+
+	function validateStep1(): boolean {
+		const errors: Record<string, string> = {};
+		if (!propertyType) errors.property_type = 'Odaberite vrstu nekretnine.';
+		if (!listingType) errors.listing_type = 'Odaberite prodaju ili najam.';
+		stepErrors = errors;
+		return Object.keys(errors).length === 0;
+	}
+
+	function validateStep2(): boolean {
+		const errors: Record<string, string> = {};
+		if (!address.trim()) errors.address = 'Unesite ili odaberite adresu.';
+		if (lat === null || lng === null) errors.location = 'Označite lokaciju na karti.';
+		stepErrors = errors;
+		return Object.keys(errors).length === 0;
+	}
+
+	function validateStep3(): boolean {
+		const errors: Record<string, string> = {};
+		if (imageFiles.length === 0) {
+			errors.images = 'Dodajte barem jednu fotografiju.';
+		}
+		stepErrors = errors;
+		return Object.keys(errors).length === 0;
+	}
+
+	function nextStep() {
+		if (step === 1 && !validateStep1()) return;
+		if (step === 2 && !validateStep2()) return;
+		stepErrors = {};
+		step = Math.min(step + 1, 3);
+	}
+
+	function prevStep() {
+		stepErrors = {};
+		step = Math.max(step - 1, 1);
+	}
+
+	const handleSubmit: SubmitFunction = ({ formData }) => {
+		loading = true;
+		formData.delete('images');
+		for (const file of imageFiles) {
+			formData.append('images', file);
+		}
+		return async ({ update }) => {
+			loading = false;
+			await update();
+		};
+	};
+
+	const stepLabels = ['Vrsta oglasa', 'Lokacija', 'Detalji'];
+</script>
+
+<svelte:head>
+	<title>Objavi oglas | BezProvizije.hr</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</svelte:head>
+
+<div class="mx-auto max-w-3xl px-4 py-10 md:px-8">
+	<h1 class="text-3xl font-extrabold text-gray-900">
+		Objavite <span class="text-yellow-500">oglas</span>
+	</h1>
+	<p class="mt-2 text-sm text-gray-600">
+		Korak {step} od 3 — {stepLabels[step - 1]}
+	</p>
+
+	<div class="mt-6 flex gap-2">
+		{#each stepLabels as label, i}
+			<div
+				class="h-1.5 flex-1 rounded-full {i + 1 <= step ? 'bg-yellow-500' : 'bg-gray-200'}"
+				title={label}
+			></div>
+		{/each}
+	</div>
+
+	{#if formErrors.form}
+		<div class="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+			{formErrors.form}
+		</div>
+	{/if}
+
+	<form
+		class="mt-8 space-y-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-xl shadow-gray-200/50 md:p-8"
+		method="POST"
+		enctype="multipart/form-data"
+		use:enhance={handleSubmit}
+	>
+		{#if step !== 2 && address}
+			<input type="hidden" name="address" value={address} />
+		{/if}
+		{#if step !== 2 && lat !== null && lng !== null}
+			<input type="hidden" name="lat" value={lat} />
+			<input type="hidden" name="lng" value={lng} />
+		{/if}
+
+		<!-- Step 1 -->
+		<div class:hidden={step !== 1} class="space-y-6">
+			<div>
+				<span class="block text-sm font-semibold text-gray-700">Vrsta transakcije</span>
+				<div class="mt-3 grid grid-cols-2 gap-3">
+					{#each Object.entries(data.listingTypeLabels) as [value, label]}
+						<label
+							class="flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-4 text-center text-sm font-semibold transition {listingType ===
+							value
+								? 'border-yellow-500 bg-yellow-50 text-yellow-900'
+								: 'border-gray-200 text-gray-700 hover:border-gray-300'}"
+						>
+							<input
+								type="radio"
+								name="listing_type"
+								value={value}
+								bind:group={listingType}
+								class="sr-only"
+							/>
+							{label}
+						</label>
+					{/each}
+				</div>
+				{#if stepErrors.listing_type || formErrors.listing_type}
+					<p class="mt-1 text-sm text-red-600">
+						{stepErrors.listing_type || formErrors.listing_type}
+					</p>
+				{/if}
+			</div>
+
+			<div>
+				<span class="block text-sm font-semibold text-gray-700">Vrsta nekretnine</span>
+				<div class="mt-3 grid gap-3 sm:grid-cols-2">
+					{#each Object.entries(data.propertyTypeConfig) as [value, config]}
+						<label
+							class="flex cursor-pointer gap-3 rounded-xl border-2 p-4 transition {propertyType ===
+							value
+								? 'border-yellow-500 bg-yellow-50'
+								: 'border-gray-200 hover:border-gray-300'}"
+						>
+							<input
+								type="radio"
+								name="property_type"
+								value={value}
+								bind:group={propertyType}
+								class="sr-only"
+							/>
+							<span class="text-2xl">{config.icon}</span>
+							<span>
+								<span class="block font-semibold text-gray-900">{config.label}</span>
+								<span class="block text-xs text-gray-500">{config.description}</span>
+							</span>
+						</label>
+					{/each}
+				</div>
+				{#if stepErrors.property_type || formErrors.property_type}
+					<p class="mt-1 text-sm text-red-600">
+						{stepErrors.property_type || formErrors.property_type}
+					</p>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Step 2 -->
+		{#if step === 2}
+			<div class="space-y-4">
+				<LocationPicker
+					bind:address
+					bind:lat
+					bind:lng
+					error={stepErrors.location || stepErrors.address || formErrors.location || formErrors.address}
+				/>
+			</div>
+		{/if}
+
+		<!-- Step 3 -->
+		<div class:hidden={step !== 3} class="space-y-5">
+			<div>
+				<label for="title" class="block text-sm font-semibold text-gray-700">Naslov oglasa</label>
+				<input
+					id="title"
+					name="title"
+					type="text"
+					required
+					minlength="5"
+					placeholder="npr. Prostran trosoban stan s terasom"
+					class="mt-1.5 block w-full rounded-xl border border-gray-300 px-4 py-3 shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
+				/>
+				{#if formErrors.title}
+					<p class="mt-1 text-sm text-red-600">{formErrors.title}</p>
+				{/if}
+			</div>
+
+			<div>
+				<label for="description" class="block text-sm font-semibold text-gray-700">Opis</label>
+				<textarea
+					id="description"
+					name="description"
+					required
+					minlength="20"
+					rows="5"
+					placeholder="Opišite nekretninu, stanje, pogodnosti i okolicu..."
+					class="mt-1.5 block w-full rounded-xl border border-gray-300 px-4 py-3 shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
+				></textarea>
+				{#if formErrors.description}
+					<p class="mt-1 text-sm text-red-600">{formErrors.description}</p>
+				{/if}
+			</div>
+
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div>
+					<label for="price" class="block text-sm font-semibold text-gray-700">
+						Cijena (€) {listingType === 'rent' ? '/ mj.' : ''}
+					</label>
+					<input
+						id="price"
+						name="price"
+						type="number"
+						min="1"
+						step="1"
+						required
+						class="mt-1.5 block w-full rounded-xl border border-gray-300 px-4 py-3 shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
+					/>
+					{#if formErrors.price}
+						<p class="mt-1 text-sm text-red-600">{formErrors.price}</p>
+					{/if}
+				</div>
+				<div>
+					<label for="sqm" class="block text-sm font-semibold text-gray-700">Površina (m²)</label>
+					<input
+						id="sqm"
+						name="sqm"
+						type="number"
+						min="1"
+						step="0.1"
+						required
+						class="mt-1.5 block w-full rounded-xl border border-gray-300 px-4 py-3 shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
+					/>
+					{#if formErrors.sqm}
+						<p class="mt-1 text-sm text-red-600">{formErrors.sqm}</p>
+					{/if}
+				</div>
+			</div>
+
+			{#if coreFields}
+				<div class="rounded-xl border border-gray-100 bg-gray-50/80 p-4">
+					<h3 class="text-sm font-semibold text-gray-800">Osnovne značajke (opcionalno)</h3>
+					<div class="mt-3 grid gap-4 sm:grid-cols-2">
+						{#if coreFields.rooms}
+							<div>
+								<label for="rooms" class="block text-sm font-medium text-gray-700"
+									>Broj soba</label
+								>
+								<input
+									id="rooms"
+									name="rooms"
+									type="number"
+									min="0"
+									class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+								/>
+							</div>
+						{/if}
+						{#if coreFields.bathrooms}
+							<div>
+								<label for="bathrooms" class="block text-sm font-medium text-gray-700"
+									>Broj kupaonica</label
+								>
+								<input
+									id="bathrooms"
+									name="bathrooms"
+									type="number"
+									min="0"
+									class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+								/>
+							</div>
+						{/if}
+						{#if coreFields.build_year}
+							<div>
+								<label for="build_year" class="block text-sm font-medium text-gray-700"
+									>Godina gradnje</label
+								>
+								<input
+									id="build_year"
+									name="build_year"
+									type="number"
+									min="1800"
+									max="2100"
+									class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+								/>
+							</div>
+						{/if}
+						{#if coreFields.parking_spaces}
+							<div>
+								<label for="parking_spaces" class="block text-sm font-medium text-gray-700"
+									>Parkirna mjesta</label
+								>
+								<input
+									id="parking_spaces"
+									name="parking_spaces"
+									type="number"
+									min="0"
+									class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+								/>
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			{#if attributeFields.length > 0}
+				<div class="rounded-xl border border-gray-100 bg-gray-50/80 p-4">
+					<h3 class="text-sm font-semibold text-gray-800">Dodatne značajke (opcionalno)</h3>
+					<div class="mt-3 grid gap-4 sm:grid-cols-2">
+						{#each attributeFields as field (field.key)}
+							{@const f = field as AttributeField}
+							<div class={f.type === 'boolean' ? 'flex items-center gap-2 sm:col-span-2' : ''}>
+								{#if f.type === 'boolean'}
+									<input
+										id={`attr_${f.key}`}
+										name={`attr_${f.key}`}
+										type="checkbox"
+										value="true"
+										class="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+									/>
+									<label for={`attr_${f.key}`} class="text-sm font-medium text-gray-700"
+										>{f.label}</label
+									>
+								{:else if f.type === 'select'}
+									<label for={`attr_${f.key}`} class="block text-sm font-medium text-gray-700"
+										>{f.label}</label
+									>
+									<select
+										id={`attr_${f.key}`}
+										name={`attr_${f.key}`}
+										class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+									>
+										<option value="">— Odaberi —</option>
+										{#each f.options ?? [] as option}
+											<option value={option}>{option}</option>
+										{/each}
+									</select>
+								{:else}
+									<label for={`attr_${f.key}`} class="block text-sm font-medium text-gray-700"
+										>{f.label}</label
+									>
+									<input
+										id={`attr_${f.key}`}
+										name={`attr_${f.key}`}
+										type={f.type === 'number' ? 'number' : 'text'}
+										min={f.min}
+										max={f.max}
+										placeholder={f.placeholder}
+										class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+									/>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<ImageUploadPreview
+				bind:files={imageFiles}
+				error={stepErrors.images || formErrors.images}
+			/>
+		</div>
+
+		<div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-between">
+			{#if step > 1}
+				<button
+					type="button"
+					onclick={prevStep}
+					class="rounded-xl border-2 border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+				>
+					Nazad
+				</button>
+			{:else}
+				<div></div>
+			{/if}
+
+			{#if step < 3}
+				<button
+					type="button"
+					onclick={nextStep}
+					class="rounded-xl bg-linear-to-r from-gray-900 to-gray-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-gray-800"
+				>
+					Nastavi
+				</button>
+			{:else}
+				<button
+					type="submit"
+					disabled={loading}
+					onclick={(e) => {
+						if (!validateStep3()) {
+							e.preventDefault();
+						}
+					}}
+					class="rounded-xl bg-linear-to-r from-gray-900 to-gray-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-gray-800 disabled:opacity-60"
+				>
+					{loading ? 'Objavljujem...' : 'Objavi oglas'}
+				</button>
+			{/if}
+		</div>
+	</form>
+</div>

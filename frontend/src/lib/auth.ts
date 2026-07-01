@@ -1,6 +1,110 @@
 import { redirect } from '@sveltejs/kit';
+import type { AuthError, User } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Cookies } from '@sveltejs/kit';
 import type { Profile, UserRole } from '$lib/types/auth';
+
+function isInvalidSessionError(error: AuthError | Error): boolean {
+	const message = error.message?.toLowerCase() ?? '';
+	return (
+		message.includes('refresh token') ||
+		message.includes('invalid jwt') ||
+		message.includes('session not found') ||
+		('code' in error && error.code === 'refresh_token_not_found')
+	);
+}
+
+export function clearAuthCookies(cookies: Cookies) {
+	for (const { name } of cookies.getAll()) {
+		if (name.startsWith('sb-') && name.includes('auth')) {
+			cookies.delete(name, { path: '/' });
+		}
+	}
+}
+
+function clearBrowserAuthStorage() {
+	if (typeof window === 'undefined') return;
+
+	for (const key of Object.keys(localStorage)) {
+		if (key.startsWith('sb-') && key.includes('auth')) {
+			localStorage.removeItem(key);
+		}
+	}
+
+	for (const key of Object.keys(sessionStorage)) {
+		if (key.startsWith('sb-') && key.includes('auth')) {
+			sessionStorage.removeItem(key);
+		}
+	}
+}
+
+export async function clearAuthSession(supabase: SupabaseClient, cookies?: Cookies) {
+	try {
+		await supabase.auth.signOut({ scope: 'local' });
+	} catch {
+		// Session is already invalid — local cleanup below is enough.
+	}
+
+	if (cookies) {
+		clearAuthCookies(cookies);
+	}
+
+	clearBrowserAuthStorage();
+}
+
+/** Returns the authenticated user, clearing stale cookies on invalid sessions. */
+export async function getSafeUser(
+	supabase: SupabaseClient,
+	cookies?: Cookies
+): Promise<{ user: User | null; error: AuthError | Error | null }> {
+	try {
+		const {
+			data: { user },
+			error
+		} = await supabase.auth.getUser();
+
+		if (error) {
+			if (isInvalidSessionError(error)) {
+				await clearAuthSession(supabase, cookies);
+			}
+			return { user: null, error };
+		}
+
+		return { user, error: null };
+	} catch (error) {
+		if (error instanceof Error && isInvalidSessionError(error)) {
+			await clearAuthSession(supabase, cookies);
+		}
+		return { user: null, error: error instanceof Error ? error : new Error(String(error)) };
+	}
+}
+
+export async function getSafeClaims(
+	supabase: SupabaseClient,
+	cookies?: Cookies
+): Promise<Record<string, unknown> | null> {
+	try {
+		const { data, error } = await supabase.auth.getClaims();
+
+		if (error) {
+			if (isInvalidSessionError(error)) {
+				await clearAuthSession(supabase, cookies);
+			}
+			return null;
+		}
+
+		return (data?.claims as Record<string, unknown> | undefined) ?? null;
+	} catch (error) {
+		if (error instanceof Error && isInvalidSessionError(error)) {
+			await clearAuthSession(supabase, cookies);
+		}
+		return null;
+	}
+}
+
+export function hasAuthCookies(cookies: Cookies): boolean {
+	return cookies.getAll().some((cookie) => cookie.name.startsWith('sb-') && cookie.name.includes('auth'));
+}
 
 export async function getProfile(
 	supabase: SupabaseClient,
@@ -45,16 +149,26 @@ export function isProfileComplete(profile: Profile | null): boolean {
 }
 
 export async function requireAuth(supabase: SupabaseClient, redirectTo = '/prijava?action=login') {
-	const {
-		data: { user },
-		error
-	} = await supabase.auth.getUser();
+	const { user } = await getSafeUser(supabase);
 
-	if (error || !user) {
+	if (!user) {
 		redirect(303, redirectTo);
 	}
 
 	const profile = await getProfile(supabase, user.id);
+
+	return { user, profile };
+}
+
+export async function requireCompleteProfile(
+	supabase: SupabaseClient,
+	redirectTo = '/account'
+) {
+	const { user, profile } = await requireAuth(supabase);
+
+	if (!isProfileComplete(profile)) {
+		redirect(303, `${redirectTo}?setup=1`);
+	}
 
 	return { user, profile };
 }

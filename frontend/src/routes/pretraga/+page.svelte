@@ -1,17 +1,19 @@
 <script lang="ts">
-	import { properties } from '$lib/dummyData';
-	// --- RJEČNIK DODATNIH SPECIFIKACIJA ---
-	// Sve što ovdje dodaš automatski postaje padajući izbornik (dropdown) u filterima.
+	let { data } = $props();
+
+	const listings = data.listings;
+
 	const dodatneSpecifikacije: Record<string, string[]> = {
-		'Način grijanja': ['Klima', 'Podno', 'Struja', 'Plinsko etažno', 'Dizalica topline'],
-		'Stanje nekretnine': ['Novogradnja', 'Za adaptaciju', 'Odlično', 'Renovirano'],
-		Parking: ['Garaža', 'Vanjsko natkriveno', 'Vanjsko ne-natkriveno', 'Nema'],
-		'Energetski razred': ['A+', 'A', 'B', 'C', 'D']
+		heating: ['Klima', 'Podno', 'Struja', 'Plinsko etažno', 'Dizalica topline'],
+		property_condition: ['Novogradnja', 'Za adaptaciju', 'Odlično', 'Renovirano', 'Dobro'],
+		energy_class: ['A+', 'A', 'B', 'C', 'D', 'E', 'F']
 	};
 
-	// --- MOCK PODACI ---
-	// Dodan 'dateAdded' za sortiranje i 'attributes' objekt koji se veže na gornji rječnik
-	const listings = properties;
+	const filterLabels: Record<string, string> = {
+		heating: 'Način grijanja',
+		property_condition: 'Stanje nekretnine',
+		energy_class: 'Energetski razred'
+	};
 	// const listings = [
 	// 	{
 	// 		id: 1,
@@ -127,7 +129,6 @@
 			if (filters.rooms !== 'all' && p.rooms !== Number(filters.rooms)) return false;
 			if (filters.bathrooms !== 'all' && p.bathrooms !== Number(filters.bathrooms)) return false;
 
-			// Dinamički filteri (iterira kroz rječnik)
 			for (const kljuc in dynamicFilters) {
 				if (dynamicFilters[kljuc] !== 'all' && p.attributes?.[kljuc] !== dynamicFilters[kljuc]) {
 					return false;
@@ -241,9 +242,9 @@
 							class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
 						>
 							<option value="all">Sve vrste</option>
-							<option value="Stan">Stan</option>
-							<option value="Kuća">Kuća</option>
-							<option value="Zemljište">Zemljište</option>
+							{#each data.propertyTypes as typeName}
+								<option value={typeName}>{typeName}</option>
+							{/each}
 						</select>
 					</div>
 
@@ -330,7 +331,9 @@
 						<!-- Ovdje se generiraju dropdownovi iz 'dodatneSpecifikacije' rječnika -->
 						{#each Object.entries(dodatneSpecifikacije) as [kategorija, opcije]}
 							<div>
-								<label class="mb-1.5 block text-xs font-medium text-gray-700">{kategorija}</label>
+								<label class="mb-1.5 block text-xs font-medium text-gray-700"
+									>{filterLabels[kategorija] ?? kategorija}</label
+								>
 								<select
 									bind:value={dynamicFilters[kategorija]}
 									class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none"
@@ -379,7 +382,8 @@
 
 			<div class="flex flex-col gap-5">
 				{#each paginatedListings as property (property.id)}
-					<div
+					<a
+						href="/nekretnina/{property.id}"
 						class="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md sm:flex-row"
 					>
 						<!-- Slika -->
@@ -467,15 +471,15 @@
 								</div>
 								<div class="flex items-center gap-2">
 									<span class="text-gray-400">🚪</span>
-									{property.attributes?.numRooms}
+									{property.rooms ?? '—'}
 								</div>
 								<div class="flex items-center gap-2 text-gray-500">
-									<span class="text-gray-400"><!-- SVG Kalendar --> 📅</span>
-									{property.dateAvailable}
+									<span class="text-gray-400">📅</span>
+									{new Date(property.dateAdded).toLocaleDateString('hr-HR')}
 								</div>
 							</div>
 						</div>
-					</div>
+					</a>
 				{/each}
 
 				{#if processedListings.length === 0}

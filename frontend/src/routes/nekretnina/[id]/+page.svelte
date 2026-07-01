@@ -1,38 +1,20 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 
-	// --- MOCK PODACI (Skraćeni radi preglednosti) ---
-	const property = {
-		title: 'Stara gradska vila',
-		description: `Predivna kamena vila smještena u mirnom dijelu grada nudi onaj rijedak osjećaj doma koji se ne može umjetno stvoriti novim namještajem ili modernim fasadama. Njezini zidovi, građeni od klesanog kamena prije više od jednog stoljeća, čuvaju svježinu čak i tijekom najtoplijih ljetnih dana, a svaki detalj u unutrašnjosti priča svoju priču. Ovo nije tipična nekretnina za odmor u kojoj je sve podređeno fotografiranju za društvene mreže, već prostor u kojem se zaista živi, polako i bez žurbe.
-Čim zakoračite kroz teška drvena vrata, osjetit ćete miris starog drva i kamena. Prizemlje je prostrano i otvoreno, s velikim blagovaonskim stolom oko kojeg su se desetljećima okupljale generacije. Kuhinja je jednostavna i funkcionalna, opremljena svime što vam treba za pripremu domaćih jela, ali bez nepotrebnih aparata koji samo zauzimaju prostor. Dnevni boravak odiše toplinom zahvaljujući niskim stropovima i udobnim naslonjačima smještenim uz prozor koji gleda na vrt.
-Gornji kat namijenjen je odmoru. Spavaće sobe su prostrane, s visokim prozorima koji propuštaju točno onoliko svjetla koliko je potrebno da se ujutro probudite prirodno. Kreveti su masivni, s posteljinom od pravog pamuka koja miriše na čisto i na vjetar. Tu nema buke prometa ni užurbanosti, jedino što ćete čuti u ranim jutarnjim satima je cvrkut ptica iz obližnjeg maslinika.
-Dvorište je možda najljepši dio ove vile. Nije to strogo uređen travnjak, već mali mediteranski raj u kojem smokva pruža duboki hlad, a grmovi lavande i ružmarina samoniklo rastu uz kamene staze. U kutu dvorišta nalazi se kamena klupa, idealno mjesto za ispijanje prve kave ili čitanje knjige dok sunce polako zalazi. Sve je nekako skromno, a opet bogato karakterom koji se rijetko pronalazi.
-Lokacija je takva da ste dovoljno blizu centra da možete prošetati do pekare ili tržnice, a opet dovoljno izolirani da imate potpunu privatnost. Ova kuća ne nudi luksuz u modernom smislu te riječi, ona nudi mir, tišinu i autentično iskustvo života u kamenu. Idealna je za ljude koji znaju cijeniti nesavršenosti stare gradnje, škripu drvenih stepenica i hladovinu debelih zidova. Ako tražite mjesto gdje ćete se zaista isključiti iz svakodnevice i povezati s jednostavnijim načinom života, ova vila će vas dočekati onako kako dočekuje stare prijatelje.`,
-		price: 2500,
-		lat: 42.6507,
-		lng: 18.0944,
-		type: 'Kuća',
-		status: 'rent',
-		address: 'Industrijska 100, Dubrovnik',
-		images: [
-			'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
-			'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-			'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80'
-		],
-		attributes: { sqm: 200, gardenSqm: 500, numRooms: 5, numBathrooms: 3, energy: 'A', pool: true }
-	};
+	let { data } = $props();
 
-	// --- MOCK PODACI O VLASNIKU ---
-	const ownerInfo = {
-		firstName: 'Ivan',
-		lastName: 'Horvat',
-		phone: '+385 91 234 5678',
-		email: 'ivan.horvat@nekretnine-primjer.hr',
-		adCode: 'VIL-2026-DBK',
-		publishedDate: '15.04.2026.',
-		validUntil: '15.05.2026.'
-	};
+	const property = $derived(data.property);
+	const ownerInfo = $derived({
+		fullName: data.owner?.full_name ?? 'Oglašivač',
+		phone: data.owner?.phone ?? '',
+		publishedDate: new Date(property.created_at).toLocaleDateString('hr-HR'),
+		adCode: property.id.slice(0, 8).toUpperCase()
+	});
+
+	const published = page.url.searchParams.get('published') === '1';
+	const pending = page.url.searchParams.get('pending') === '1';
+	const updated = page.url.searchParams.get('updated') === '1';
 
 	// --- CAROUSEL STATE ---
 	let currentImageIndex = $state(0);
@@ -49,33 +31,26 @@ Lokacija je takva da ste dovoljno blizu centra da možete prošetati do pekare i
 		currentImageIndex = index;
 	}
 
-	// --- KONFIGURACIJA KLJUČNIH ATRIBUTA ---
-	const keyAttributesConfig: Record<
-		string,
-		{ key: string; label: string; unit: string; type?: 'boolean' }[]
-	> = {
-		Kuća: [
-			{ key: 'sqm', label: 'Površina', unit: 'm²' },
-			{ key: 'gardenSqm', label: 'Okućnica', unit: 'm²' },
-			{ key: 'numRooms', label: 'Broj soba', unit: '' },
-			{ key: 'numBathrooms', label: 'Kupaonice', unit: '' },
-			{ key: 'energy', label: 'Energetski razred', unit: '' },
-			{ key: 'pool', label: 'Bazen', unit: '', type: 'boolean' }
-		]
-	};
-
-	// U Svelte 5, koristimo $derived.by za kompleksniju logiku
 	let displayAttributes = $derived.by(() => {
-		const config = keyAttributesConfig[property.type] || [];
-		return config
-			.map((cfg) => {
-				// @ts-ignore
-				const val = property.attributes[cfg.key];
-				let displayVal = val;
-				if (cfg.type === 'boolean') displayVal = val ? 'Da' : 'Ne';
-				return { label: cfg.label, value: displayVal, unit: cfg.unit, exists: val !== undefined };
-			})
-			.filter((attr) => attr.exists);
+		const attrs: { label: string; value: string | number; unit: string }[] = [
+			{ label: 'Površina', value: property.sqm, unit: 'm²' }
+		];
+		if (property.rooms != null) attrs.push({ label: 'Broj soba', value: property.rooms, unit: '' });
+		if (property.bathrooms != null)
+			attrs.push({ label: 'Kupaonice', value: property.bathrooms, unit: '' });
+		if (property.build_year != null)
+			attrs.push({ label: 'Godina gradnje', value: property.build_year, unit: '' });
+		if (property.parking_spaces != null)
+			attrs.push({ label: 'Parkirna mjesta', value: property.parking_spaces, unit: '' });
+
+		const attrRecord = property.attributes as Record<string, string | number | boolean>;
+		for (const [key, val] of Object.entries(attrRecord)) {
+			if (val === '' || val === null || val === undefined) continue;
+			const label = key.replace(/_/g, ' ');
+			const displayVal = typeof val === 'boolean' ? (val ? 'Da' : 'Ne') : val;
+			attrs.push({ label, value: displayVal, unit: '' });
+		}
+		return attrs;
 	});
 
 	const formatPrice = (price: number) => {
@@ -115,11 +90,12 @@ Lokacija je takva da ste dovoljno blizu centra da možete prošetati do pekare i
 
 	onMount(async () => {
 		if (!mapElement) return;
+		const prop = data.property;
 		const leaflet = await import('leaflet');
 		const L = leaflet.default || leaflet;
 
 		const map = L.map(mapElement, { zoomControl: false, scrollWheelZoom: true }).setView(
-			[property.lat, property.lng],
+			[prop.lat, prop.lng],
 			15
 		);
 		L.control.zoom({ position: 'topright' }).addTo(map);
@@ -137,7 +113,7 @@ Lokacija je takva da ste dovoljno blizu centra da možete prošetati do pekare i
 			iconAnchor: [24, 48]
 		});
 
-		L.marker([property.lat, property.lng], { icon: markerIcon }).addTo(map);
+		L.marker([prop.lat, prop.lng], { icon: markerIcon }).addTo(map);
 	});
 </script>
 
@@ -146,6 +122,31 @@ Lokacija je takva da ste dovoljno blizu centra da možete prošetati do pekare i
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
+	{#if updated}
+		<div class="mb-6 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800" role="status">
+			Promjene su uspješno spremljene.
+		</div>
+	{/if}
+	{#if published}
+		<div class="mb-6 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800" role="status">
+			Oglas je uspješno objavljen!
+		</div>
+	{/if}
+	{#if pending}
+		<div class="mb-6 rounded-xl bg-yellow-50 px-4 py-3 text-sm text-yellow-800" role="status">
+			Oglas je poslan na odobrenje. Bit će vidljiv javnosti nakon što ga administrator odobri.
+		</div>
+	{/if}
+	{#if data.property.approval_status === 'rejected' && (data.isOwner || data.isAdmin)}
+		<div class="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+			Ovaj oglas je odbijen i nije vidljiv javnosti.
+		</div>
+	{/if}
+	{#if data.property.approval_status === 'pending' && (data.isOwner || data.isAdmin) && !pending}
+		<div class="mb-6 rounded-xl bg-yellow-50 px-4 py-3 text-sm text-yellow-800" role="status">
+			Oglas čeka odobrenje administratora.
+		</div>
+	{/if}
 	<!-- HEADER -->
 	<div class="mb-8 text-center md:text-left">
 		<div class="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -315,55 +316,42 @@ Lokacija je takva da ste dovoljno blizu centra da možete prošetati do pekare i
 				<div
 					class="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 text-2xl font-bold text-yellow-600 shadow-sm"
 				>
-					{ownerInfo.firstName[0]}{ownerInfo.lastName[0]}
+					{ownerInfo.fullName
+						.split(' ')
+						.map((n) => n[0])
+						.join('')
+						.slice(0, 2)}
 				</div>
 				<div>
-					<p class="text-xl font-bold text-gray-900">{ownerInfo.firstName} {ownerInfo.lastName}</p>
+					<p class="text-xl font-bold text-gray-900">{ownerInfo.fullName}</p>
 				</div>
 			</div>
 
 			<!-- Kontakt podaci -->
 			<div class="mb-8 space-y-4">
-				<div class="flex items-center gap-4 text-gray-600">
-					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
-						<svg
-							class="h-5 w-5 text-yellow-500"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							><path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-							/></svg
+				{#if ownerInfo.phone}
+					<div class="flex items-center gap-4 text-gray-600">
+						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+							<svg
+								class="h-5 w-5 text-yellow-500"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								><path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+								/></svg
+							>
+						</div>
+						<a
+							href="tel:{ownerInfo.phone}"
+							class="text-lg font-medium transition-colors hover:text-yellow-600"
+							>{ownerInfo.phone}</a
 						>
 					</div>
-					<a
-						href="tel:{ownerInfo.phone}"
-						class="text-lg font-medium transition-colors hover:text-yellow-600">{ownerInfo.phone}</a
-					>
-				</div>
-				<div class="flex items-center gap-4 text-gray-600">
-					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
-						<svg
-							class="h-5 w-5 text-yellow-500"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							><path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-							/></svg
-						>
-					</div>
-					<a
-						href="mailto:{ownerInfo.email}"
-						class="text-lg font-medium transition-colors hover:text-yellow-600">{ownerInfo.email}</a
-					>
-				</div>
+				{/if}
 			</div>
 
 			<!-- Podaci o oglasu -->
@@ -371,16 +359,8 @@ Lokacija je takva da ste dovoljno blizu centra da možete prošetati do pekare i
 				class="mt-auto rounded-2xl border border-gray-100 bg-gray-50 p-6 text-sm font-medium text-gray-500"
 			>
 				<div class="mb-3 flex justify-between border-b border-gray-200 pb-3">
-					<span>Šifra oglasa:</span>
-					<span class="font-bold text-gray-900">{ownerInfo.adCode}</span>
-				</div>
-				<div class="mb-3 flex justify-between border-b border-gray-200 pb-3">
 					<span>Objavljeno:</span>
 					<span class="font-bold text-gray-900">{ownerInfo.publishedDate}</span>
-				</div>
-				<div class="flex justify-between">
-					<span>Vrijedi do:</span>
-					<span class="font-bold text-gray-900">{ownerInfo.validUntil}</span>
 				</div>
 			</div>
 		</div>

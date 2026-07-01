@@ -90,10 +90,10 @@
 						</a>
 						{#if profile?.role === 'admin'}
 							<a
-								href="/admin"
-								class="font-medium text-yellow-600 transition-colors hover:text-yellow-500"
-							>
-								Admin
+							href="/admin/oglasi"
+							class="font-medium text-yellow-600 transition-colors hover:text-yellow-500"
+						>
+							Admin
 							</a>
 						{/if}
 					{:else}
@@ -278,7 +278,7 @@
 								</a>
 								{#if profile?.role === 'admin'}
 									<a
-										href="/admin"
+										href="/admin/oglasi"
 										onclick={closeMenu}
 										class="flex w-full justify-center rounded-xl border-2 border-yellow-200 py-3 text-lg font-semibold text-yellow-700 transition hover:bg-yellow-50"
 									>

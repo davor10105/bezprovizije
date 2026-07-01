@@ -1,11 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { isValidEmail } from '$lib/auth';
+import { getSafeClaims, isValidEmail } from '$lib/auth';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
-	const { data, error } = await supabase.auth.getClaims();
+	const claims = await getSafeClaims(supabase);
 
-	if (!error && data?.claims) {
+	if (claims) {
 		redirect(303, '/account');
 	}
 

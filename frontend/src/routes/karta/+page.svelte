@@ -1,7 +1,9 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 
-	import { properties } from '$lib/dummyData';
+	let { data } = $props();
+
+	const properties = data.listings;
 
 	// -- Leaflet instances --
 	let mapElement;
@@ -24,20 +26,16 @@
 	let minSqm = $state(0);
 
 	// Checkbox state za tipove nekretnina
-	let typeFilters = $state({
-		Kuća: true,
-		Stan: true,
-		Zemljište: true,
-		Garaža: true,
-		Poslovni: true
-	});
+	let typeFilters = $state(
+		Object.fromEntries(data.propertyTypes.map((type) => [type, true])) as Record<string, boolean>
+	);
 
 	let filteredProperties = $derived(
 		properties.filter((p) => {
 			const matchesStatus = p.status === filterStatus; // Striktno podudaranje
 			const matchesPrice = p.price <= maxPrice;
 			const matchesSqm = p.sqm >= minSqm;
-			const matchesType = typeFilters[p.type];
+			const matchesType = typeFilters[p.type] ?? true;
 			return matchesStatus && matchesPrice && matchesSqm && matchesType;
 		})
 	);
@@ -57,12 +55,12 @@
 		}).format(price);
 	}
 
-	const typeColorMap = {
+	const typeColorMap: Record<string, string> = {
 		Kuća: 'bg-emerald-600',
 		Stan: 'bg-blue-600',
-		Zemljište: 'bg-amber-600',
 		Garaža: 'bg-gray-700',
-		Poslovni: 'bg-purple-600'
+		Poslovni: 'bg-purple-600',
+		Soba: 'bg-indigo-600'
 	};
 
 	function toggleMapStyle() {

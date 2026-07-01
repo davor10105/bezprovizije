@@ -1,10 +1,10 @@
 import type { LayoutServerLoad } from './$types';
-import { getProfile } from '$lib/auth';
+import { getProfile, getSafeUser, hasAuthCookies } from '$lib/auth';
 
 export const load: LayoutServerLoad = async ({ cookies, locals: { supabase } }) => {
-	const {
-		data: { user }
-	} = await supabase.auth.getUser();
+	const { user } = hasAuthCookies(cookies)
+		? await getSafeUser(supabase, cookies)
+		: { user: null };
 
 	let profile = null;
 	if (user) {
