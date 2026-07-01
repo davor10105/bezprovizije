@@ -1,6 +1,6 @@
 <script lang="ts">
 	import './layout.css';
-	import { invalidate } from '$app/navigation';
+	import { invalidate, afterNavigate } from '$app/navigation';
 	import favicon from '$lib/assets/favicon.png';
 	import logo from '$lib/assets/bezprovizije_logo.png';
 	import logoLight from '$lib/assets/bezprovizije_logo_light.png';
@@ -9,6 +9,7 @@
 	import { onMount } from 'svelte';
 
 	let mobileMenu = $state(false);
+	let scrollContainer = $state<HTMLElement | null>(null);
 	let { data, children } = $props();
 	let { supabase, claims, profile } = $derived(data);
 	let isLoggedIn = $derived(!!claims);
@@ -26,12 +27,17 @@
 		});
 		return () => data.subscription.unsubscribe();
 	});
+
+	afterNavigate(({ to }) => {
+		if (to.url.hash) return;
+		scrollContainer?.scrollTo(0, 0);
+	});
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <div class="flex h-screen w-screen flex-col overflow-hidden">
-	<main class="relative z-0 flex-grow overflow-y-auto">
+	<main bind:this={scrollContainer} class="relative z-0 flex-grow overflow-y-auto">
 		<header class="sticky top-0 z-10000 flex-shrink-0 bg-secondary/70 backdrop-blur">
 			<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
 				<a href="/" class="flex-shrink-0">
