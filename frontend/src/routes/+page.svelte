@@ -1,28 +1,15 @@
 <script>
-	import { onMount } from 'svelte';
 	import SearchPublish from '$lib/SearchPublish.svelte';
 	import CategoryCarousel from '$lib/CategoryCarousel.svelte';
 	import PropertySummary from '$lib/PropertySummary.svelte';
 	import Blogs from '$lib/Blogs.svelte';
 	import logoLight from '$lib/assets/bezprovizije_logo_light.png';
-	import { properties } from '$lib/dummyData';
 
 	let { data } = $props();
-
-	const categories = [
-		{ title: 'Stanovi', img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2' },
-		{ title: 'Kuće', img: 'https://images.unsplash.com/photo-1572120360610-d971b9d7767c' },
-		{ title: 'Zemljišta', img: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef' },
-		{
-			title: 'Poslovni prostori',
-			img: 'https://images.unsplash.com/photo-1497366216548-37526070297c'
-		}
-	];
-	const latestProperties = properties.slice(0, 4);
 </script>
 
 <main class="min-h-screen bg-gray-50 text-gray-800">
-	<SearchPublish />
+	<SearchPublish listings={data.mapListings} />
 	<!-- Hero -->
 	<section class="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10">
 		<div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-8">
@@ -84,21 +71,28 @@
 				</a>
 			</div>
 
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-4 xl:gap-8">
-				{#each latestProperties as property (property.id)}
-					<PropertySummary
-						title={property.title}
-						price={property.price}
-						location={property.address}
-						sqm={property.sqm}
-						bedrooms={property.attributes?.numRooms}
-						bathrooms={property.attributes?.numBathrooms}
-						image={property.image}
-						status={property.status}
-						type={property.type}
-					/>
-				{/each}
-			</div>
+			{#if data.recentListings.length === 0}
+				<p class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center text-gray-500">
+					Trenutno nema objavljenih oglasa. Provjerite uskoro ponovno.
+				</p>
+			{:else}
+				<div class="grid grid-cols-1 gap-6 lg:grid-cols-4 xl:gap-8">
+					{#each data.recentListings as property (property.id)}
+						<PropertySummary
+							id={property.id}
+							title={property.title}
+							price={property.price}
+							location={property.address}
+							sqm={property.sqm}
+							bedrooms={property.rooms}
+							bathrooms={property.bathrooms}
+							image={property.image}
+							status={property.status}
+							type={property.type}
+						/>
+					{/each}
+				</div>
+			{/if}
 			<!-- </section> -->
 		</div>
 	</section>

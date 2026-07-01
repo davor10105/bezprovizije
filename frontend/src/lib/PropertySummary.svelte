@@ -1,25 +1,26 @@
 <script lang="ts">
 	// Definiramo sve podatke koje komponenta prima
 	interface Props {
+		id: string;
 		title: string;
 		price: number;
 		location: string;
 		sqm: number;
-		bedrooms?: number;
-		bathrooms?: number;
+		bedrooms?: number | null;
+		bathrooms?: number | null;
 		image: string;
 		status: 'sale' | 'rent';
 		type: string;
 	}
 
-	// Svelte 5 $props() runa s defaultnim vrijednostima za sobe/kupaonice
 	let {
+		id,
 		title,
 		price,
 		location,
 		sqm,
-		bedrooms = 1,
-		bathrooms = 1,
+		bedrooms,
+		bathrooms,
 		image,
 		status,
 		type
@@ -35,7 +36,7 @@
 </script>
 
 <a
-	href="/nekretnina/1"
+	href="/nekretnina/{id}"
 	class="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl"
 >
 	<div class="relative h-56 w-full overflow-hidden">
@@ -110,41 +111,45 @@
 				<span class="font-semibold text-gray-800">{sqm} m²</span>
 			</div>
 
-			<div class="flex items-center gap-1.5" title="Spavaće sobe">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 text-gray-400"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-					/>
-				</svg>
-				<span class="font-semibold text-gray-800">{bedrooms}</span>
-			</div>
+			{#if bedrooms != null}
+				<div class="flex items-center gap-1.5" title="Spavaće sobe">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5 text-gray-400"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+						/>
+					</svg>
+					<span class="font-semibold text-gray-800">{bedrooms}</span>
+				</div>
+			{/if}
 
-			<div class="flex items-center gap-1.5" title="Kupaonice">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 text-gray-400"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-					/>
-				</svg>
-				<span class="font-semibold text-gray-800">{bathrooms}</span>
-			</div>
+			{#if bathrooms != null}
+				<div class="flex items-center gap-1.5" title="Kupaonice">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5 text-gray-400"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+						/>
+					</svg>
+					<span class="font-semibold text-gray-800">{bathrooms}</span>
+				</div>
+			{/if}
 		</div>
 	</div>
 </a>

@@ -1,4 +1,5 @@
 export const ADMIN_PAGE_SIZE = 20;
+export const SEARCH_PAGE_SIZE = 12;
 
 export function parsePageParam(value: string | null, defaultPage = 1): number {
 	const page = Number(value);

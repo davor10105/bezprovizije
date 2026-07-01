@@ -1,6 +1,13 @@
 <script lang="ts">
 	import rijekaFirst from '$lib/assets/rijeka3-1.jpg';
 	import MapPreview from '$lib/MapPreview.svelte';
+	import type { ListingCard } from '$lib/properties/queries';
+
+	let {
+		listings = []
+	}: {
+		listings?: Pick<ListingCard, 'lat' | 'lng' | 'price' | 'type'>[];
+	} = $props();
 	// Stanja za formu pretrage
 	let tipUsluge = $state('Prodaja');
 	let tipNekretnine = $state('Stan');
@@ -150,7 +157,7 @@
 				<div
 					class="mb-8 flex aspect-auto w-full items-center justify-center overflow-hidden rounded-xl bg-gray-200 md:aspect-video"
 				>
-					<MapPreview />
+					<MapPreview {listings} />
 				</div>
 
 				<button

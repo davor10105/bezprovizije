@@ -6,7 +6,8 @@ import {
 	PROPERTY_TYPE_SEARCH_LABELS,
 	getPublicImageUrl
 } from '$lib/properties/schema';
-import { pageRange } from '$lib/pagination';
+import { pageRange, SEARCH_PAGE_SIZE } from '$lib/pagination';
+import type { SearchFilters } from '$lib/properties/search';
 
 const FALLBACK_IMAGE =
 	'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80';
@@ -159,6 +160,122 @@ export async function fetchApprovedListings(supabase: SupabaseClient): Promise<L
 	}
 
 	return (data as DbProperty[]).map(toListingCard);
+}
+
+const LISTING_SELECT = `id, title, address, price, sqm, property_type, listing_type,
+  rooms, bathrooms, lat, lng, attributes, created_at,
+  property_images (storage_path, sort_order)`;
+
+export async function fetchSearchListings(
+	supabase: SupabaseClient,
+	filters: SearchFilters,
+	pageSize = SEARCH_PAGE_SIZE
+): Promise<{ listings: ListingCard[]; total: number }> {
+	const { from, to } = pageRange(filters.page, pageSize);
+
+	let query = supabase
+		.from('properties')
+		.select(LISTING_SELECT, { count: 'exact' })
+		.eq('approval_status', 'approved');
+
+	if (filters.listingType) {
+		query = query.eq('listing_type', filters.listingType);
+	}
+	if (filters.propertyType) {
+		query = query.eq('property_type', filters.propertyType);
+	}
+	if (filters.minPrice != null) {
+		query = query.gte('price', filters.minPrice);
+	}
+	if (filters.maxPrice != null) {
+		query = query.lte('price', filters.maxPrice);
+	}
+	if (filters.minSqm != null) {
+		query = query.gte('sqm', filters.minSqm);
+	}
+	if (filters.maxSqm != null) {
+		query = query.lte('sqm', filters.maxSqm);
+	}
+	if (filters.location) {
+		query = query.ilike('address', `%${filters.location}%`);
+	}
+
+	if (filters.rooms === '4+') {
+		query = query.gte('rooms', 4);
+	} else if (filters.rooms) {
+		const rooms = Number(filters.rooms);
+		if (Number.isFinite(rooms)) {
+			query = query.eq('rooms', rooms);
+		}
+	}
+
+	if (filters.bathrooms === '3+') {
+		query = query.gte('bathrooms', 3);
+	} else if (filters.bathrooms) {
+		const bathrooms = Number(filters.bathrooms);
+		if (Number.isFinite(bathrooms)) {
+			query = query.eq('bathrooms', bathrooms);
+		}
+	}
+
+	if (filters.minBuildYear != null) {
+		query = query.gte('build_year', filters.minBuildYear);
+	}
+	if (filters.minParking != null) {
+		query = query.gte('parking_spaces', filters.minParking);
+	}
+
+	for (const [key, value] of Object.entries(filters.attributes)) {
+		if (!value) continue;
+
+		if (value.endsWith('+') && value.length > 1) {
+			const min = Number(value.slice(0, -1));
+			if (Number.isFinite(min)) {
+				query = query.filter(`attributes->${key}`, 'gte', min);
+			}
+			continue;
+		}
+
+		if (value === 'true' || value === 'false') {
+			query = query.eq(`attributes->>${key}`, value);
+			continue;
+		}
+
+		const asNumber = Number(value);
+		if (Number.isFinite(asNumber) && String(asNumber) === value) {
+			query = query.filter(`attributes->${key}`, 'gte', asNumber);
+		} else {
+			query = query.eq(`attributes->>${key}`, value);
+		}
+	}
+
+	switch (filters.sort) {
+		case 'oldest':
+			query = query.order('created_at', { ascending: true });
+			break;
+		case 'price_asc':
+			query = query.order('price', { ascending: true });
+			break;
+		case 'price_desc':
+			query = query.order('price', { ascending: false });
+			break;
+		default:
+			query = query.order('created_at', { ascending: false });
+	}
+
+	query = query.range(from, to);
+
+	const { data, error, count } = await query;
+
+	if (error) {
+		console.error('fetchSearchListings failed:', error.message);
+		return { listings: [], total: 0 };
+	}
+
+	return {
+		listings: (data as DbProperty[]).map(toListingCard),
+		total: count ?? 0
+	};
 }
 
 export async function fetchUserListings(

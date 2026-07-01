@@ -121,6 +121,19 @@ export const CORE_OPTIONAL_FIELDS: Record<
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[];
 export const LISTING_TYPES = Object.keys(LISTING_TYPE_LABELS) as ListingType[];
 
+/** Unique searchable attribute fields across all property types (for /pretraga drawer). */
+export function getSearchableAttributeFields(): AttributeField[] {
+	const seen = new Map<string, AttributeField>();
+	for (const type of PROPERTY_TYPES) {
+		for (const field of ATTRIBUTE_FIELDS_BY_TYPE[type]) {
+			if (field.searchable) {
+				seen.set(field.key, field);
+			}
+		}
+	}
+	return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label, 'hr'));
+}
+
 export function getPublicImageUrl(supabaseUrl: string, storagePath: string): string {
 	return `${supabaseUrl}/storage/v1/object/public/property-images/${storagePath}`;
 }

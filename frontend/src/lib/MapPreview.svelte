@@ -1,49 +1,37 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { properties } from '$lib/dummyData';
+	import type { ListingCard } from '$lib/properties/queries';
 
-	// Tipiziramo element kao HTML div
+	let {
+		listings = []
+	}: {
+		listings?: Pick<ListingCard, 'lat' | 'lng' | 'price' | 'type'>[];
+	} = $props();
+
 	let mapElement: HTMLDivElement;
 	let markersGroup;
 
-	// Definiramo strukturu za naše podatke
-	interface DummyProperty {
-		lat: number;
-		lng: number;
-		price: string;
-	}
-
-	function formatMarkerPrice(price) {
+	function formatMarkerPrice(price: number) {
 		if (price >= 1000) {
 			return (price / 1000).toFixed(0) + 'k €';
 		}
 		return price + ' €';
 	}
 
-	function formatFullPrice(price) {
-		return new Intl.NumberFormat('hr-HR', {
-			style: 'currency',
-			currency: 'EUR',
-			maximumFractionDigits: 0
-		}).format(price);
-	}
-
-	const typeColorMap = {
+	const typeColorMap: Record<string, string> = {
 		Kuća: 'bg-emerald-600',
 		Stan: 'bg-blue-600',
-		Zemljište: 'bg-amber-600',
 		Garaža: 'bg-gray-700',
-		Poslovni: 'bg-purple-600'
+		Poslovni: 'bg-purple-600',
+		Soba: 'bg-indigo-600'
 	};
 
 	onMount(async () => {
-		// Dinamički import za Leaflet (zbog SvelteKit SSR-a)
 		const leaflet = await import('leaflet');
 		const L = leaflet.default || leaflet;
 		window.L = L;
 		await import('leaflet.markercluster');
 
-		// Inicijalizacija mape s isključenim interakcijama
 		const map = L.map(mapElement, {
 			zoomControl: false,
 			dragging: false,
@@ -72,37 +60,30 @@
 		});
 
 		map.addLayer(markersGroup);
-		// Tipiziramo array s DummyProperty sučeljem
-		const dummyProperties: DummyProperty[] = properties;
 
-		const typeColorMap = {
-			Kuća: 'bg-emerald-600',
-			Stan: 'bg-blue-600',
-			Zemljište: 'bg-amber-600',
-			Garaža: 'bg-gray-700',
-			Poslovni: 'bg-purple-600'
-		};
-
-		dummyProperties.forEach((prop: DummyProperty) => {
+		for (const prop of listings) {
 			const baseColor = typeColorMap[prop.type] || 'bg-gray-900';
 			const priceLabel = formatMarkerPrice(prop.price);
 			const priceIcon = L.divIcon({
 				className: '!bg-transparent !border-none',
 				html: `<div class="group pointer-events-auto flex flex-col items-center cursor-pointer transition-transform duration-200 hover:scale-110">
-                            <!-- Glavni oblačić -->
                             <div class="whitespace-nowrap relative z-10 flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold text-white shadow-md transition-colors duration-200 ${baseColor} group-hover:bg-black group-hover:text-yellow-500">
                                 ${priceLabel}
                             </div>
-                            <!-- Špic koji pokazuje na točnu lokaciju -->
                             <div class="relative z-0 -mt-1.5 h-3 w-3 rotate-45 shadow-sm transition-colors duration-200 ${baseColor} group-hover:bg-black"></div>
                        </div>`,
 				iconSize: [75, 40],
-				iconAnchor: [37.5, 36], // Sidro je pomaknuto na dno novog špica
-				popupAnchor: [0, -36] // Oblačić (popup) se sada otvara iznad špica
+				iconAnchor: [37.5, 36],
+				popupAnchor: [0, -36]
 			});
-			const marker = L.marker([prop.lat, prop.lng], { icon: priceIcon }).addTo(map);
+			const marker = L.marker([prop.lat, prop.lng], { icon: priceIcon });
 			markersGroup.addLayer(marker);
-		});
+		}
+
+		if (listings.length > 0) {
+			const bounds = L.latLngBounds(listings.map((prop) => [prop.lat, prop.lng]));
+			map.fitBounds(bounds, { padding: [24, 24], maxZoom: 8 });
+		}
 	});
 </script>
 
