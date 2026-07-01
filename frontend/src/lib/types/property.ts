@@ -16,6 +16,9 @@ export type Property = {
 	address: string;
 	lat: number;
 	lng: number;
+	county: string | null;
+	city: string | null;
+	neighborhood: string | null;
 	rooms: number | null;
 	bathrooms: number | null;
 	build_year: number | null;

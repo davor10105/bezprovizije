@@ -3,6 +3,7 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import type { Actions, PageServerLoad } from './$types';
 import { isAdmin, isProfileComplete, requireAuth } from '$lib/auth';
 import { parseListingForm } from '$lib/properties/listingForm';
+import { resolveLocationFromCoords } from '$lib/properties/location';
 import {
 	ATTRIBUTE_FIELDS_BY_TYPE,
 	CORE_OPTIONAL_FIELDS,
@@ -74,7 +75,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 };
 
 export const actions: Actions = {
-	update: async ({ request, params, locals: { supabase } }) => {
+	update: async ({ request, fetch, params, locals: { supabase } }) => {
 		const loginRedirect = `/prijava?action=login&redirect=/uredi-oglas/${params.id}`;
 		const { user, profile } = await requireAuth(supabase, loginRedirect);
 
@@ -115,6 +116,7 @@ export const actions: Actions = {
 		}
 
 		const needsReapproval = !isAdmin(profile);
+		const location = await resolveLocationFromCoords(fetch, payload.lat, payload.lng);
 
 		const { error: updateError } = await supabase
 			.from('properties')
@@ -128,6 +130,9 @@ export const actions: Actions = {
 				address: payload.address,
 				lat: payload.lat,
 				lng: payload.lng,
+				county: location.county,
+				city: location.city,
+				neighborhood: location.neighborhood,
 				rooms: payload.rooms,
 				bathrooms: payload.bathrooms,
 				build_year: payload.build_year,

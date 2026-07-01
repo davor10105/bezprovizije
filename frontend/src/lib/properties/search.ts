@@ -11,7 +11,9 @@ export type SearchFilters = {
 	maxPrice: number | null;
 	minSqm: number | null;
 	maxSqm: number | null;
-	location: string;
+	county: string;
+	city: string;
+	neighborhoods: string[];
 	sort: SearchSort;
 	page: number;
 	rooms: string;
@@ -29,7 +31,9 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
 	maxPrice: null,
 	minSqm: null,
 	maxSqm: null,
-	location: '',
+	county: '',
+	city: '',
+	neighborhoods: [],
 	sort: 'newest',
 	page: 1,
 	rooms: '',
@@ -38,6 +42,8 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
 	minParking: null,
 	attributes: {}
 };
+
+const MULTI_VALUE_PARAMS = new Set(['neighborhood']);
 
 function parseOptionalNumber(value: string | null): number | null {
 	if (!value?.trim()) return null;
@@ -74,7 +80,9 @@ export function parseSearchParams(params: URLSearchParams): SearchFilters {
 		maxPrice: parseOptionalNumber(params.get('maxPrice')),
 		minSqm: parseOptionalNumber(params.get('minSqm')),
 		maxSqm: parseOptionalNumber(params.get('maxSqm')),
-		location: params.get('location')?.trim() ?? '',
+		county: params.get('county')?.trim() ?? '',
+		city: params.get('city')?.trim() ?? '',
+		neighborhoods: params.getAll('neighborhood').map((v) => v.trim()).filter(Boolean),
 		sort: parseSort(params.get('sort')),
 		page: parsePageParam(params.get('page')),
 		rooms: params.get('rooms')?.trim() ?? '',
@@ -95,7 +103,11 @@ export function searchParamsFromFilters(filters: SearchFilters, options?: { page
 	if (filters.maxPrice != null) params.set('maxPrice', String(filters.maxPrice));
 	if (filters.minSqm != null) params.set('minSqm', String(filters.minSqm));
 	if (filters.maxSqm != null) params.set('maxSqm', String(filters.maxSqm));
-	if (filters.location) params.set('location', filters.location);
+	if (filters.county) params.set('county', filters.county);
+	if (filters.city) params.set('city', filters.city);
+	for (const neighborhood of filters.neighborhoods) {
+		params.append('neighborhood', neighborhood);
+	}
 	if (filters.sort !== 'newest') params.set('sort', filters.sort);
 	if (filters.rooms) params.set('rooms', filters.rooms);
 	if (filters.bathrooms) params.set('bathrooms', filters.bathrooms);
@@ -125,4 +137,20 @@ export function countActiveExtraFilters(filters: SearchFilters): number {
 	if (filters.minParking != null) count++;
 	count += Object.values(filters.attributes).filter(Boolean).length;
 	return count;
+}
+
+export function formDataToSearchParams(formData: FormData): URLSearchParams {
+	const params = new URLSearchParams();
+
+	for (const [key, value] of formData.entries()) {
+		if (typeof value !== 'string' || !value.trim()) continue;
+		if (MULTI_VALUE_PARAMS.has(key)) {
+			params.append(key, value.trim());
+		} else {
+			params.set(key, value.trim());
+		}
+	}
+
+	params.delete('page');
+	return params;
 }

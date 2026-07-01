@@ -1,12 +1,28 @@
 <script lang="ts">
-	import { countActiveExtraFilters, searchHref } from '$lib/properties/search';
+	import {
+		countActiveExtraFilters,
+		formDataToSearchParams,
+		searchHref
+	} from '$lib/properties/search';
 
 	let { data } = $props();
 
 	let mobileFiltersOpen = $state(false);
-	let extraFiltersOpen = $state(false);
+	let extraFiltersOpen = $state(countActiveExtraFilters(data.filters) > 0);
+	let selectedCounty = $state(data.filters.county);
+	let selectedCity = $state(data.filters.city);
 
 	const extraFilterCount = $derived(countActiveExtraFilters(data.filters));
+
+	const counties = $derived(Object.keys(data.locationHierarchy));
+	const cities = $derived(
+		selectedCounty ? Object.keys(data.locationHierarchy[selectedCounty] ?? {}) : []
+	);
+	const availableNeighborhoods = $derived(
+		selectedCounty && selectedCity
+			? (data.locationHierarchy[selectedCounty]?.[selectedCity] ?? [])
+			: []
+	);
 
 	const formatPrice = (price: number) =>
 		new Intl.NumberFormat('hr-HR', {
@@ -16,13 +32,7 @@
 		}).format(price);
 
 	function submitSearchForm(form: HTMLFormElement) {
-		const params = new URLSearchParams();
-		for (const [key, value] of new FormData(form).entries()) {
-			if (typeof value === 'string' && value.trim()) {
-				params.set(key, value.trim());
-			}
-		}
-		params.delete('page');
+		const params = formDataToSearchParams(new FormData(form));
 		const query = params.toString();
 		window.location.href = query ? `/pretraga?${query}` : '/pretraga';
 	}
@@ -35,6 +45,14 @@
 	function onSortChange(event: Event) {
 		const form = (event.currentTarget as HTMLSelectElement).form;
 		if (form) submitSearchForm(form);
+	}
+
+	function onCountyChange() {
+		selectedCity = '';
+	}
+
+	function toggleExtraFilters() {
+		extraFiltersOpen = !extraFiltersOpen;
 	}
 </script>
 
@@ -182,37 +200,92 @@
 					</div>
 				</div>
 
-				<div>
-					<label for="location" class="mb-1.5 block text-sm font-medium text-gray-700"
-						>Lokacija</label
-					>
-					<input
-						id="location"
-						name="location"
-						type="search"
-						value={data.filters.location}
-						placeholder="npr. Zagreb, Split, Rijeka..."
-						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-					/>
-					<p class="mt-1 text-xs text-gray-500">Pretražuje po adresi oglasa</p>
+				<div class="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+					<p class="text-sm font-semibold text-gray-800">Lokacija</p>
+
+					{#if counties.length === 0}
+						<p class="text-xs text-gray-500">
+							Lokacijski filteri bit će dostupni kad odobreni oglasi imaju spremljenu lokaciju.
+						</p>
+					{:else}
+						<div>
+							<label for="county" class="mb-1.5 block text-xs font-medium text-gray-700"
+								>Županija</label
+							>
+							<select
+								id="county"
+								name="county"
+								bind:value={selectedCounty}
+								onchange={onCountyChange}
+								class="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm outline-none focus:border-yellow-500"
+							>
+								<option value="">Sve županije</option>
+								{#each counties as county}
+									<option value={county}>{county}</option>
+								{/each}
+							</select>
+						</div>
+
+						<div>
+							<label for="city" class="mb-1.5 block text-xs font-medium text-gray-700">Grad</label>
+							<select
+								id="city"
+								name="city"
+								bind:value={selectedCity}
+								disabled={!selectedCounty}
+								class="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm outline-none focus:border-yellow-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+							>
+								<option value="">{selectedCounty ? 'Svi gradovi' : 'Prvo odaberite županiju'}</option
+								>
+								{#each cities as city}
+									<option value={city}>{city}</option>
+								{/each}
+							</select>
+						</div>
+
+						{#if selectedCity && availableNeighborhoods.length > 0}
+							<fieldset>
+								<legend class="mb-2 block text-xs font-medium text-gray-700">Kvartovi</legend>
+								<div class="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3">
+									{#each availableNeighborhoods as neighborhood}
+										<label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+											<input
+												type="checkbox"
+												name="neighborhood"
+												value={neighborhood}
+												checked={data.filters.neighborhoods.includes(neighborhood)}
+												class="rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+											/>
+											{neighborhood}
+										</label>
+									{/each}
+								</div>
+								<p class="mt-1 text-xs text-gray-500">Možete odabrati više kvartova odjednom</p>
+							</fieldset>
+						{:else if selectedCity}
+							<p class="text-xs text-gray-500">Nema dostupnih kvartova za odabrani grad.</p>
+						{/if}
+					{/if}
 				</div>
 
 				<button
 					type="button"
 					class="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 transition hover:border-yellow-400 hover:bg-yellow-50"
-					onclick={() => (extraFiltersOpen = true)}
+					onclick={toggleExtraFilters}
+					aria-expanded={extraFiltersOpen}
 				>
 					<span>Dodatni filteri</span>
-					{#if extraFilterCount > 0}
-						<span
-							class="rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-bold text-white"
-						>
-							{extraFilterCount}
-						</span>
-					{:else}
+					<span class="flex items-center gap-2">
+						{#if extraFilterCount > 0}
+							<span class="rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-bold text-white">
+								{extraFilterCount}
+							</span>
+						{/if}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4 text-gray-500"
+							class="h-4 w-4 text-gray-500 transition-transform duration-200 {extraFiltersOpen
+								? 'rotate-180'
+								: ''}"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -221,11 +294,132 @@
 								stroke-linecap="round"
 								stroke-linejoin="round"
 								stroke-width="2"
-								d="M9 5l7 7-7 7"
+								d="M19 9l-7 7-7-7"
 							/>
 						</svg>
-					{/if}
+					</span>
 				</button>
+
+				<div
+					class="grid transition-[grid-template-rows] duration-300 ease-out"
+					style:grid-template-rows={extraFiltersOpen ? '1fr' : '0fr'}
+				>
+					<div class="overflow-hidden">
+						<div class="space-y-5 border-t border-gray-200 pt-5">
+							<div class="grid grid-cols-2 gap-2">
+								<div>
+									<label for="rooms" class="mb-1.5 block text-xs font-medium text-gray-700"
+										>Sobe</label
+									>
+									<select
+										id="rooms"
+										name="rooms"
+										value={data.filters.rooms || ''}
+										class="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-yellow-500"
+									>
+										<option value="">Sve</option>
+										<option value="1">1</option>
+										<option value="2">2</option>
+										<option value="3">3</option>
+										<option value="4+">4+</option>
+									</select>
+								</div>
+								<div>
+									<label for="bathrooms" class="mb-1.5 block text-xs font-medium text-gray-700"
+										>Kupaonice</label
+									>
+									<select
+										id="bathrooms"
+										name="bathrooms"
+										value={data.filters.bathrooms || ''}
+										class="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-yellow-500"
+									>
+										<option value="">Sve</option>
+										<option value="1">1</option>
+										<option value="2">2</option>
+										<option value="3+">3+</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="grid grid-cols-2 gap-2">
+								<div>
+									<label for="minBuildYear" class="mb-1.5 block text-xs font-medium text-gray-700"
+										>Godina gradnje od</label
+									>
+									<input
+										id="minBuildYear"
+										name="minBuildYear"
+										type="number"
+										min="1800"
+										max="2100"
+										value={data.filters.minBuildYear ?? ''}
+										placeholder="npr. 2000"
+										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+									/>
+								</div>
+								<div>
+									<label for="minParking" class="mb-1.5 block text-xs font-medium text-gray-700"
+										>Parkirna mjesta (min.)</label
+									>
+									<input
+										id="minParking"
+										name="minParking"
+										type="number"
+										min="0"
+										value={data.filters.minParking ?? ''}
+										placeholder="npr. 1"
+										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+									/>
+								</div>
+							</div>
+
+							{#each data.attributeFields as field (field.key)}
+								<div>
+									<label for="attr-{field.key}" class="mb-1.5 block text-xs font-medium text-gray-700"
+										>{field.label}</label
+									>
+									{#if field.type === 'select' && field.options}
+										<select
+											id="attr-{field.key}"
+											name="a_{field.key}"
+											value={data.filters.attributes[field.key] ?? ''}
+											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+										>
+											<option value="">Sve</option>
+											{#each field.options as option}
+												<option value={option}>{option}</option>
+											{/each}
+										</select>
+									{:else if field.type === 'boolean'}
+										<select
+											id="attr-{field.key}"
+											name="a_{field.key}"
+											value={data.filters.attributes[field.key] ?? ''}
+											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+										>
+											<option value="">Sve</option>
+											<option value="true">Da</option>
+											<option value="false">Ne</option>
+										</select>
+									{:else if field.type === 'number'}
+										<input
+											id="attr-{field.key}"
+											name="a_{field.key}"
+											type="number"
+											min={field.min}
+											max={field.max}
+											value={data.filters.attributes[field.key] ?? ''}
+											placeholder={field.placeholder ?? `Min. ${field.label.toLowerCase()}`}
+											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+										/>
+										<p class="mt-1 text-xs text-gray-500">Minimalna vrijednost</p>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
 
 				<div class="flex gap-2 pt-1">
 					<button
@@ -417,176 +611,3 @@
 		</main>
 	</form>
 </div>
-
-{#if extraFiltersOpen}
-	<div
-		class="fixed inset-0 z-50 flex justify-end bg-black/40"
-		role="presentation"
-		onclick={() => (extraFiltersOpen = false)}
-		onkeydown={(e) => e.key === 'Escape' && (extraFiltersOpen = false)}
-	>
-		<div
-			class="flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="extra-filters-title"
-			tabindex="-1"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-		>
-			<div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-				<h2 id="extra-filters-title" class="text-lg font-bold text-gray-900">Dodatni filteri</h2>
-				<button
-					type="button"
-					class="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
-					onclick={() => (extraFiltersOpen = false)}
-					aria-label="Zatvori"
-				>
-					✕
-				</button>
-			</div>
-
-			<div class="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label for="drawer-rooms" class="mb-1.5 block text-sm font-medium text-gray-700"
-							>Sobe</label
-						>
-						<select
-							id="drawer-rooms"
-							name="rooms"
-							form="search-form"
-							value={data.filters.rooms || ''}
-							class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-						>
-							<option value="">Sve</option>
-							<option value="1">1</option>
-							<option value="2">2</option>
-							<option value="3">3</option>
-							<option value="4+">4+</option>
-						</select>
-					</div>
-					<div>
-						<label for="drawer-bathrooms" class="mb-1.5 block text-sm font-medium text-gray-700"
-							>Kupaonice</label
-						>
-						<select
-							id="drawer-bathrooms"
-							name="bathrooms"
-							form="search-form"
-							value={data.filters.bathrooms || ''}
-							class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-						>
-							<option value="">Sve</option>
-							<option value="1">1</option>
-							<option value="2">2</option>
-							<option value="3+">3+</option>
-						</select>
-					</div>
-				</div>
-
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label for="minBuildYear" class="mb-1.5 block text-sm font-medium text-gray-700"
-							>Godina gradnje od</label
-						>
-						<input
-							id="minBuildYear"
-							name="minBuildYear"
-							form="search-form"
-							type="number"
-							min="1800"
-							max="2100"
-							value={data.filters.minBuildYear ?? ''}
-							placeholder="npr. 2000"
-							class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-						/>
-					</div>
-					<div>
-						<label for="minParking" class="mb-1.5 block text-sm font-medium text-gray-700"
-							>Parkirna mjesta (min.)</label
-						>
-						<input
-							id="minParking"
-							name="minParking"
-							form="search-form"
-							type="number"
-							min="0"
-							value={data.filters.minParking ?? ''}
-							placeholder="npr. 1"
-							class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-						/>
-					</div>
-				</div>
-
-				<hr class="border-gray-200" />
-
-				{#each data.attributeFields as field (field.key)}
-					<div>
-						<label
-							for="attr-{field.key}"
-							class="mb-1.5 block text-sm font-medium text-gray-700">{field.label}</label
-						>
-						{#if field.type === 'select' && field.options}
-							<select
-								id="attr-{field.key}"
-								name="a_{field.key}"
-								form="search-form"
-								value={data.filters.attributes[field.key] ?? ''}
-								class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-							>
-								<option value="">Sve</option>
-								{#each field.options as option}
-									<option value={option}>{option}</option>
-								{/each}
-							</select>
-						{:else if field.type === 'boolean'}
-							<select
-								id="attr-{field.key}"
-								name="a_{field.key}"
-								form="search-form"
-								value={data.filters.attributes[field.key] ?? ''}
-								class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-							>
-								<option value="">Sve</option>
-								<option value="true">Da</option>
-								<option value="false">Ne</option>
-							</select>
-						{:else if field.type === 'number'}
-							<input
-								id="attr-{field.key}"
-								name="a_{field.key}"
-								form="search-form"
-								type="number"
-								min={field.min}
-								max={field.max}
-								value={data.filters.attributes[field.key] ?? ''}
-								placeholder={field.placeholder ?? `Min. ${field.label.toLowerCase()}`}
-								class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-							/>
-							<p class="mt-1 text-xs text-gray-500">Minimalna vrijednost</p>
-						{/if}
-					</div>
-				{/each}
-			</div>
-
-			<div class="flex gap-3 border-t border-gray-200 px-6 py-4">
-				<button
-					type="submit"
-					form="search-form"
-					class="flex-1 rounded-lg bg-yellow-500 py-3 font-bold text-white hover:bg-yellow-600"
-					onclick={() => (extraFiltersOpen = false)}
-				>
-					Primijeni filtere
-				</button>
-				<button
-					type="button"
-					class="rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-					onclick={() => (extraFiltersOpen = false)}
-				>
-					Zatvori
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}

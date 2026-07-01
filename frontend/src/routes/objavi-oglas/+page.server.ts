@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { isAdmin, isProfileComplete, requireAuth } from '$lib/auth';
 import { parseListingForm } from '$lib/properties/listingForm';
+import { resolveLocationFromCoords } from '$lib/properties/location';
 import {
 	ATTRIBUTE_FIELDS_BY_TYPE,
 	CORE_OPTIONAL_FIELDS,
@@ -28,7 +29,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase } }) => {
+	default: async ({ request, fetch, locals: { supabase } }) => {
 		const loginRedirect = '/prijava?action=login&redirect=/objavi-oglas';
 		const { user, profile } = await requireAuth(supabase, loginRedirect);
 
@@ -43,6 +44,7 @@ export const actions: Actions = {
 		}
 
 		const autoApproved = isAdmin(profile);
+		const location = await resolveLocationFromCoords(fetch, payload.lat, payload.lng);
 
 		const { data: property, error: propertyError } = await supabase
 			.from('properties')
@@ -57,6 +59,9 @@ export const actions: Actions = {
 				address: payload.address,
 				lat: payload.lat,
 				lng: payload.lng,
+				county: location.county,
+				city: location.city,
+				neighborhood: location.neighborhood,
 				rooms: payload.rooms,
 				bathrooms: payload.bathrooms,
 				build_year: payload.build_year,

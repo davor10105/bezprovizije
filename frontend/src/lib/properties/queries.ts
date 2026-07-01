@@ -8,6 +8,10 @@ import {
 } from '$lib/properties/schema';
 import { pageRange, SEARCH_PAGE_SIZE } from '$lib/pagination';
 import type { SearchFilters } from '$lib/properties/search';
+import {
+	type LocationHierarchy,
+	sortLocationHierarchy
+} from '$lib/properties/location';
 
 const FALLBACK_IMAGE =
 	'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80';
@@ -196,8 +200,14 @@ export async function fetchSearchListings(
 	if (filters.maxSqm != null) {
 		query = query.lte('sqm', filters.maxSqm);
 	}
-	if (filters.location) {
-		query = query.ilike('address', `%${filters.location}%`);
+	if (filters.county) {
+		query = query.eq('county', filters.county);
+	}
+	if (filters.city) {
+		query = query.eq('city', filters.city);
+	}
+	if (filters.neighborhoods.length > 0) {
+		query = query.in('neighborhood', filters.neighborhoods);
 	}
 
 	if (filters.rooms === '4+') {
@@ -276,6 +286,36 @@ export async function fetchSearchListings(
 		listings: (data as DbProperty[]).map(toListingCard),
 		total: count ?? 0
 	};
+}
+
+export async function fetchLocationHierarchy(supabase: SupabaseClient): Promise<LocationHierarchy> {
+	const { data, error } = await supabase
+		.from('properties')
+		.select('county, city, neighborhood')
+		.eq('approval_status', 'approved')
+		.not('county', 'is', null)
+		.not('city', 'is', null);
+
+	if (error) {
+		console.error('fetchLocationHierarchy failed:', error.message);
+		return {};
+	}
+
+	const hierarchy: LocationHierarchy = {};
+
+	for (const row of data ?? []) {
+		if (!row.county || !row.city) continue;
+		if (!hierarchy[row.county]) hierarchy[row.county] = {};
+		if (!hierarchy[row.county][row.city]) hierarchy[row.county][row.city] = [];
+		if (
+			row.neighborhood &&
+			!hierarchy[row.county][row.city].includes(row.neighborhood)
+		) {
+			hierarchy[row.county][row.city].push(row.neighborhood);
+		}
+	}
+
+	return sortLocationHierarchy(hierarchy);
 }
 
 export async function fetchUserListings(
