@@ -1,24 +1,46 @@
-<script>
-	import { onMount } from 'svelte';
+<script lang="ts">
+	import type { SupabaseClient } from '@supabase/supabase-js';
 	import { page } from '$app/state';
 
+	interface Props {
+		supabase: SupabaseClient;
+	}
+
+	let { supabase }: Props = $props();
+
 	const notAuthorized = page.url.searchParams.get('not_authorized') === 'true';
-	// The actual redirect function attached to the button
-	function loginWithGoogle() {
-		window.location.href = '/api/login';
+
+	async function loginWithGoogle() {
+		const redirectTo = `${window.location.origin}/auth/callback`;
+
+		const { error } = await supabase.auth.signInWithOAuth({
+			provider: 'google',
+			options: {
+				redirectTo,
+				queryParams: {
+					access_type: 'offline',
+					prompt: 'consent'
+				}
+			}
+		});
+
+		if (error) {
+			console.error('Google prijava nije uspjela:', error.message);
+		}
 	}
 </script>
 
-<div class="mt-10 flex flex-col items-center gap-4">
+<div class="mt-6">
 	{#if notAuthorized}
-		<div class="text-center text-sm font-medium text-red-500" role="alert">
+		<div class="mb-4 text-center text-sm font-medium text-red-500" role="alert">
 			Greška prilikom prijave. Molimo pokušajte ponovno.
 		</div>
 	{/if}
 
 	<button
+		type="button"
 		onclick={loginWithGoogle}
-		class="flex w-full items-center justify-center gap-3 rounded-lg bg-linear-to-r from-purple-200 to-sky-100 px-4 py-3.5 text-sm font-medium text-gray-700 shadow-md transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none sm:max-w-sm"
+		class="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:outline-none"
 	>
 		<svg class="h-5 w-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
 			<path

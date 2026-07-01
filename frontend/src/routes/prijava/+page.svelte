@@ -1,39 +1,36 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
 	import GoogleLoginButton from '$lib/GoogleLoginButton.svelte';
+	import type { SubmitFunction } from '@sveltejs/kit';
 
-	// Inicijalno stanje očitavamo iz URL-a.
-	// Ako piše ?action=register, isLogin je false. U svim ostalim slučajevima (ili ako parametra nema), isLogin je true (Prijava).
+	let { data, form } = $props();
+
+	const formErrors = $derived((form?.errors ?? {}) as Record<string, string>);
+
 	let isLogin = $state($page.url.searchParams.get('action') !== 'register');
+	let loading = $state(false);
 
-	// Ovaj $effect osigurava da se forma prebaci ako korisnik klikne na link
-	// dok se VEĆ nalazi na stranici za prijavu/registraciju.
 	$effect(() => {
 		const action = $page.url.searchParams.get('action');
 		if (action === 'register') isLogin = false;
 		if (action === 'login') isLogin = true;
 	});
 
-	// Varijable za formu
-	let email = $state('');
-	let password = $state('');
-	let confirmPassword = $state('');
+	$effect(() => {
+		if (form?.action === 'login') isLogin = true;
+		if (form?.action === 'register') isLogin = false;
+	});
 
-	function handleSubmit(e: Event) {
-		e.preventDefault();
-		if (isLogin) {
-			console.log('Prijava:', { email, password });
-		} else {
-			if (password !== confirmPassword) {
-				alert('Lozinke se ne podudaraju!');
-				return;
-			}
-			console.log('Registracija:', { email, password });
-		}
-	}
+	const handleSubmit: SubmitFunction = () => {
+		loading = true;
+		return async ({ update }) => {
+			loading = false;
+			await update();
+		};
+	};
 </script>
 
-<!-- Glavni kontejner (centrira karticu na ekranu) -->
 <div class="flex min-h-[80vh] flex-col justify-center bg-gray-50/50 py-12 sm:px-6 lg:px-8">
 	<div class="text-center sm:mx-auto sm:w-full sm:max-w-md">
 		<h2 class="mt-6 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
@@ -46,30 +43,51 @@
 		<p class="mt-2 text-sm text-gray-600">
 			{#if isLogin}
 				Nemate račun?
-				<button
-					onclick={() => (isLogin = false)}
+				<a
+					href="/prijava?action=register"
 					class="font-bold text-yellow-600 transition-colors hover:text-yellow-500"
 				>
 					Registrirajte se besplatno
-				</button>
+				</a>
 			{:else}
 				Već imate račun?
-				<button
-					onclick={() => (isLogin = true)}
+				<a
+					href="/prijava?action=login"
 					class="font-bold text-yellow-600 transition-colors hover:text-yellow-500"
 				>
 					Prijavite se
-				</button>
+				</a>
 			{/if}
 		</p>
+		{#if !isLogin}
+			<p class="mt-1 text-xs text-gray-500">
+				Ime, prezime i telefon unijet ćete nakon potvrde emaila.
+			</p>
+		{/if}
 	</div>
 
 	<div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
 		<div
 			class="border border-gray-100 bg-white px-4 py-8 shadow-xl shadow-gray-200/50 sm:rounded-2xl sm:px-10"
 		>
-			<form class="space-y-5" onsubmit={handleSubmit}>
-				<!-- Email polje -->
+			{#if form?.success}
+				<div class="mb-6 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800" role="status">
+					{form.message}
+				</div>
+			{/if}
+
+			{#if formErrors.form}
+				<div class="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+					{formErrors.form}
+				</div>
+			{/if}
+
+			<form
+				class="space-y-5"
+				method="POST"
+				action={isLogin ? '?/login' : '?/register'}
+				use:enhance={handleSubmit}
+			>
 				<div>
 					<label for="email" class="block text-sm font-semibold text-gray-700">Email adresa</label>
 					<div class="mt-1.5">
@@ -79,14 +97,16 @@
 							type="email"
 							autocomplete="email"
 							required
-							bind:value={email}
+							value={form?.email ?? ''}
 							class="block w-full appearance-none rounded-xl border border-gray-300 px-4 py-3 placeholder-gray-400 shadow-sm transition-colors focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
 							placeholder="vas@email.com"
 						/>
 					</div>
+					{#if formErrors.email}
+						<p class="mt-1 text-sm text-red-600">{formErrors.email}</p>
+					{/if}
 				</div>
 
-				<!-- Lozinka polje -->
 				<div>
 					<label for="password" class="block text-sm font-semibold text-gray-700">Lozinka</label>
 					<div class="mt-1.5">
@@ -96,68 +116,48 @@
 							type="password"
 							autocomplete={isLogin ? 'current-password' : 'new-password'}
 							required
-							bind:value={password}
 							class="block w-full appearance-none rounded-xl border border-gray-300 px-4 py-3 placeholder-gray-400 shadow-sm transition-colors focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
 							placeholder="••••••••"
 						/>
 					</div>
+					{#if formErrors.password}
+						<p class="mt-1 text-sm text-red-600">{formErrors.password}</p>
+					{/if}
 				</div>
 
-				<!-- Potvrda lozinke (samo za registraciju) -->
 				{#if !isLogin}
 					<div>
-						<label for="confirm-password" class="block text-sm font-semibold text-gray-700"
+						<label for="confirmPassword" class="block text-sm font-semibold text-gray-700"
 							>Potvrdite lozinku</label
 						>
 						<div class="mt-1.5">
 							<input
-								id="confirm-password"
-								name="confirm-password"
+								id="confirmPassword"
+								name="confirmPassword"
 								type="password"
 								autocomplete="new-password"
 								required
-								bind:value={confirmPassword}
 								class="block w-full appearance-none rounded-xl border border-gray-300 px-4 py-3 placeholder-gray-400 shadow-sm transition-colors focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
 								placeholder="••••••••"
 							/>
 						</div>
+						{#if formErrors.confirmPassword}
+							<p class="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+						{/if}
 					</div>
 				{/if}
 
-				<!-- Zaboravljena lozinka (samo za prijavu) -->
-				{#if isLogin}
-					<div class="flex items-center justify-between">
-						<div class="flex items-center">
-							<input
-								id="remember-me"
-								name="remember-me"
-								type="checkbox"
-								class="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
-							/>
-							<label for="remember-me" class="ml-2 block text-sm text-gray-700">Zapamti me</label>
-						</div>
-
-						<div class="text-sm">
-							<a
-								href="/zaboravljena-lozinka"
-								class="font-bold text-yellow-600 hover:text-yellow-500">Zaboravili ste lozinku?</a
-							>
-						</div>
-					</div>
-				{/if}
-
-				<!-- Glavni gumb za slanje -->
 				<div class="pt-2">
 					<button
 						type="submit"
-						class="flex w-full justify-center rounded-xl bg-linear-to-r from-gray-900 to-gray-600 px-4 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-gray-800 hover:shadow-lg focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 focus:outline-none"
+						disabled={loading}
+						class="flex w-full justify-center rounded-xl bg-linear-to-r from-gray-900 to-gray-600 px-4 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-gray-800 hover:shadow-lg focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 focus:outline-none disabled:opacity-60"
 					>
-						{isLogin ? 'Prijavi se' : 'Završi registraciju'}
+						{loading ? 'Učitavanje...' : isLogin ? 'Prijavi se' : 'Završi registraciju'}
 					</button>
 				</div>
 			</form>
 
-			<!-- Divider -->
 			<div class="mt-8">
 				<div class="relative">
 					<div class="absolute inset-0 flex items-center">
@@ -168,8 +168,7 @@
 					</div>
 				</div>
 
-				<!-- Google Login Gumb -->
-				<GoogleLoginButton />
+				<GoogleLoginButton supabase={data.supabase} />
 			</div>
 		</div>
 	</div>

@@ -1,65 +1,65 @@
-import { fail, redirect } from '@sveltejs/kit'
-import type { Actions, PageServerLoad } from './$types'
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { isProfileComplete, isValidPhone, requireAuth, saveProfile } from '$lib/auth';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
-    const { data: claimsData, error } = await supabase.auth.getClaims()
+	const { user, profile } = await requireAuth(supabase);
 
-    if (error || !claimsData?.claims) {
-        redirect(303, '/')
-    }
-
-    const { claims } = claimsData
-
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select(`username, full_name, website, avatar_url`)
-        .eq('id', claims.sub)
-        .single()
-
-    return { claims, profile }
-}
+	return {
+		email: user.email ?? '',
+		profile,
+		needsSetup: !isProfileComplete(profile)
+	};
+};
 
 export const actions: Actions = {
-    update: async ({ request, locals: { supabase } }) => {
-        const formData = await request.formData()
-        const fullName = formData.get('fullName') as string
-        const username = formData.get('username') as string
-        const website = formData.get('website') as string
-        const avatarUrl = formData.get('avatarUrl') as string
+	update: async ({ request, locals: { supabase } }) => {
+		const formData = await request.formData();
+		const fullName = (formData.get('fullName') as string)?.trim();
+		const phone = (formData.get('phone') as string)?.trim();
 
-        const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+		const errors: Record<string, string> = {};
 
-        if (claimsError || !claimsData?.claims) {
-            return fail(401, { fullName, username, website, avatarUrl })
-        }
+		if (!fullName || fullName.length < 2) {
+			errors.fullName = 'Unesite puno ime i prezime.';
+		}
 
-        const { error } = await supabase.from('profiles').upsert({
-            id: claimsData.claims.sub,
-            full_name: fullName,
-            username,
-            website,
-            avatar_url: avatarUrl,
-            updated_at: new Date(),
-        })
+		if (!phone || !isValidPhone(phone)) {
+			errors.phone = 'Unesite ispravan broj telefona.';
+		}
 
-        if (error) {
-            return fail(500, {
-                fullName,
-                username,
-                website,
-                avatarUrl,
-            })
-        }
+		if (Object.keys(errors).length > 0) {
+			return fail(400, { errors, fullName, phone });
+		}
 
-        return {
-            fullName,
-            username,
-            website,
-            avatarUrl,
-        }
-    },
-    signout: async ({ locals: { supabase } }) => {
-        await supabase.auth.signOut()
-        redirect(303, '/')
-    },
-}
+		const {
+			data: { user },
+			error: userError
+		} = await supabase.auth.getUser();
+
+		if (userError || !user) {
+			return fail(401, { errors: { form: 'Niste prijavljeni.' }, fullName, phone });
+		}
+
+		const { error } = await saveProfile(supabase, user.id, {
+			full_name: fullName,
+			phone
+		});
+
+		if (error) {
+			console.error('Profile save failed:', error.message);
+			return fail(500, {
+				errors: { form: 'Spremanje nije uspjelo. Pokušajte ponovno.' },
+				fullName,
+				phone
+			});
+		}
+
+		return { success: true, fullName, phone };
+	},
+
+	signout: async ({ locals: { supabase } }) => {
+		await supabase.auth.signOut();
+		redirect(303, '/');
+	}
+};

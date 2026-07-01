@@ -10,7 +10,8 @@
 
 	let mobileMenu = $state(false);
 	let { data, children } = $props();
-	let { supabase, claims } = $derived(data);
+	let { supabase, claims, profile } = $derived(data);
+	let isLoggedIn = $derived(!!claims);
 
 	// Funkcija koja zatvara izbornik nakon klika
 	function closeMenu() {
@@ -80,21 +81,35 @@
 				</nav>
 
 				<div class="hidden items-center space-x-3 md:flex">
-					<!-- Gumb za Prijavu -->
-					<a
-						href="/prijava?action=login"
-						class="font-medium text-gray-600 transition-colors hover:text-gray-900"
-					>
-						Prijava
-					</a>
-
-					<!-- Gumb za Registraciju -->
-					<a
-						href="/prijava?action=register"
-						class="rounded-xl bg-linear-to-r from-gray-900 to-gray-600 px-5 py-2.5 font-semibold text-white shadow-md transition hover:bg-gray-800"
-					>
-						Registracija
-					</a>
+					{#if isLoggedIn}
+						<a
+							href="/account"
+							class="font-medium text-gray-600 transition-colors hover:text-gray-900"
+						>
+							{profile?.full_name || 'Moj račun'}
+						</a>
+						{#if profile?.role === 'admin'}
+							<a
+								href="/admin"
+								class="font-medium text-yellow-600 transition-colors hover:text-yellow-500"
+							>
+								Admin
+							</a>
+						{/if}
+					{:else}
+						<a
+							href="/prijava?action=login"
+							class="font-medium text-gray-600 transition-colors hover:text-gray-900"
+						>
+							Prijava
+						</a>
+						<a
+							href="/prijava?action=register"
+							class="rounded-xl bg-linear-to-r from-gray-900 to-gray-600 px-5 py-2.5 font-semibold text-white shadow-md transition hover:bg-gray-800"
+						>
+							Registracija
+						</a>
+					{/if}
 				</div>
 
 				<!-- Mobile Menu Gumb -->
@@ -253,18 +268,37 @@
 						<hr class="my-2 border-gray-200" />
 
 						<div class="flex flex-col gap-3 pt-2">
-							<a
-								href="/prijava?action=login"
-								onclick={closeMenu}
-								class="flex w-full justify-center rounded-xl border-2 border-gray-200 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
-								>Prijava</a
-							>
-							<a
-								href="/prijava?action=register"
-								onclick={closeMenu}
-								class="flex w-full justify-center rounded-xl bg-linear-to-r from-gray-900 to-gray-600 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-gray-800"
-								>Registracija</a
-							>
+							{#if isLoggedIn}
+								<a
+									href="/account"
+									onclick={closeMenu}
+									class="flex w-full justify-center rounded-xl border-2 border-gray-200 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
+								>
+									{profile?.full_name || 'Moj račun'}
+								</a>
+								{#if profile?.role === 'admin'}
+									<a
+										href="/admin"
+										onclick={closeMenu}
+										class="flex w-full justify-center rounded-xl border-2 border-yellow-200 py-3 text-lg font-semibold text-yellow-700 transition hover:bg-yellow-50"
+									>
+										Administracija
+									</a>
+								{/if}
+							{:else}
+								<a
+									href="/prijava?action=login"
+									onclick={closeMenu}
+									class="flex w-full justify-center rounded-xl border-2 border-gray-200 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
+									>Prijava</a
+								>
+								<a
+									href="/prijava?action=register"
+									onclick={closeMenu}
+									class="flex w-full justify-center rounded-xl bg-linear-to-r from-gray-900 to-gray-600 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-gray-800"
+									>Registracija</a
+								>
+							{/if}
 						</div>
 					</div>
 				</div>
