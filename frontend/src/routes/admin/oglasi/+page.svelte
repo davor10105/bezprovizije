@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import Pagination from '$lib/Pagination.svelte';
 
 	let { data, form } = $props();
 
@@ -35,7 +36,7 @@
 <section class="mt-8">
 	<h2 class="text-lg font-bold text-gray-900">
 		Na čekanju
-		<span class="text-sm font-normal text-gray-500">({data.pending.length})</span>
+		<span class="text-sm font-normal text-gray-500">({data.pendingPagination.total})</span>
 	</h2>
 
 	{#if data.pending.length === 0}
@@ -108,12 +109,26 @@
 				</article>
 			{/each}
 		</div>
+
+		<Pagination
+			currentPage={data.pendingPagination.page}
+			totalPages={data.pendingPagination.totalPages}
+			paramName="pendingPage"
+		/>
 	{/if}
 </section>
 
-{#if data.other.length > 0}
-	<section class="mt-12">
-		<h2 class="text-lg font-bold text-gray-900">Ostali oglasi</h2>
+<section class="mt-12">
+	<h2 class="text-lg font-bold text-gray-900">
+		Ostali oglasi
+		<span class="text-sm font-normal text-gray-500">({data.otherPagination.total})</span>
+	</h2>
+
+	{#if data.other.length === 0}
+		<p class="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-gray-500">
+			Nema odobrenih ili odbijenih oglasa.
+		</p>
+	{:else}
 		<div class="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
 			<table class="min-w-full text-sm">
 				<thead class="bg-gray-50">
@@ -128,8 +143,9 @@
 					{#each data.other as listing (listing.id)}
 						<tr>
 							<td class="px-4 py-3">
-								<a href="/nekretnina/{listing.id}" class="font-medium text-gray-900 hover:text-yellow-700"
-									>{listing.title}</a
+								<a
+									href="/nekretnina/{listing.id}"
+									class="font-medium text-gray-900 hover:text-yellow-700">{listing.title}</a
 								>
 							</td>
 							<td class="px-4 py-3 text-gray-600">{listing.ownerName}</td>
@@ -140,23 +156,41 @@
 										? 'bg-green-100 text-green-800'
 										: 'bg-red-100 text-red-800'}"
 								>
-									{statusLabel[listing.approval_status as keyof typeof statusLabel]}
+									{statusLabel[listing.approval_status]}
 								</span>
 							</td>
 							<td class="px-4 py-3">
 								<div class="flex gap-2">
 									{#if listing.approval_status !== 'approved'}
-										<form method="POST" action="?/approve" use:enhance={() => () => invalidateAll()}>
+										<form
+											method="POST"
+											action="?/approve"
+											use:enhance={() => async ({ update }) => {
+												await update();
+												await invalidateAll();
+											}}
+										>
 											<input type="hidden" name="id" value={listing.id} />
-											<button type="submit" class="text-xs font-semibold text-green-700 hover:underline"
+											<button
+												type="submit"
+												class="text-xs font-semibold text-green-700 hover:underline"
 												>Odobri</button
 											>
 										</form>
 									{/if}
 									{#if listing.approval_status !== 'rejected'}
-										<form method="POST" action="?/reject" use:enhance={() => () => invalidateAll()}>
+										<form
+											method="POST"
+											action="?/reject"
+											use:enhance={() => async ({ update }) => {
+												await update();
+												await invalidateAll();
+											}}
+										>
 											<input type="hidden" name="id" value={listing.id} />
-											<button type="submit" class="text-xs font-semibold text-red-700 hover:underline"
+											<button
+												type="submit"
+												class="text-xs font-semibold text-red-700 hover:underline"
 												>Odbij</button
 											>
 										</form>
@@ -168,5 +202,11 @@
 				</tbody>
 			</table>
 		</div>
-	</section>
-{/if}
+
+		<Pagination
+			currentPage={data.otherPagination.page}
+			totalPages={data.otherPagination.totalPages}
+			paramName="otherPage"
+		/>
+	{/if}
+</section>
