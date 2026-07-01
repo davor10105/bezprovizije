@@ -7,6 +7,8 @@
 	import logoLight from '$lib/assets/bezprovizije_logo_light.png';
 	import { properties } from '$lib/dummyData';
 
+	let { data } = $props();
+
 	const categories = [
 		{ title: 'Stanovi', img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2' },
 		{ title: 'Kuće', img: 'https://images.unsplash.com/photo-1572120360610-d971b9d7767c' },
@@ -102,7 +104,7 @@
 	</section>
 	<!-- Guides Section -->
 	<section class="bg-white px-4 py-2 md:px-8 md:py-4">
-		<Blogs />
+		<Blogs blogs={data.recentBlogs} />
 	</section>
 
 	<!-- Why Section -->
