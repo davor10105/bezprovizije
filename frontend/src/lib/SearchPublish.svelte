@@ -2,85 +2,90 @@
 	import rijekaFirst from '$lib/assets/rijeka3-1.jpg';
 	import MapPreview from '$lib/MapPreview.svelte';
 	import type { ListingCard } from '$lib/properties/queries';
+	import type { LocationHierarchy } from '$lib/properties/location';
+	import type { ListingType, PropertyType } from '$lib/types/property';
 
 	let {
-		listings = []
+		listings = [],
+		locationHierarchy = {},
+		propertyTypes = []
 	}: {
 		listings?: Pick<ListingCard, 'lat' | 'lng' | 'price' | 'type'>[];
+		locationHierarchy?: LocationHierarchy;
+		propertyTypes?: { value: string; label: string }[];
 	} = $props();
-	// Stanja za formu pretrage
-	let tipUsluge = $state('Prodaja');
-	let tipNekretnine = $state('Stan');
-	let cijenaMin = $state<number>();
-	let cijenaMax = $state<number>();
-	let kvadraturaMin = $state<number>();
-	let kvadraturaMax = $state<number>();
-	let grad = $state('');
 
-	// Dummy podaci za padajuće izbornike
-	const vrsteNekretnina = ['Kuća', 'Stan', 'Poslovni prostor', 'Garaža', 'Zemljište', 'Soba'];
-	const gradovi = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Pula', 'Dubrovnik'];
+	let listingType = $state<ListingType>('sale');
+	let propertyType = $state<PropertyType | ''>('');
+	let selectedCounty = $state('');
+	let selectedCity = $state('');
 
-	// Placeholder za tvoju sliku unutar desnog kontejnera
-	// import oglasSlika from '$lib/assets/tvoja_slika.png';
+	const counties = $derived(Object.keys(locationHierarchy));
+	const cities = $derived(
+		selectedCounty ? Object.keys(locationHierarchy[selectedCounty] ?? {}) : []
+	);
+	const availableNeighborhoods = $derived(
+		selectedCounty && selectedCity ? (locationHierarchy[selectedCounty]?.[selectedCity] ?? []) : []
+	);
+
+	function onCountyChange() {
+		selectedCity = '';
+	}
 </script>
 
-<!-- <section
-	class="relative flex min-h-[600px] w-full items-center justify-center bg-gray-100 bg-[url('/putanja/do/tvoje/pozadine.jpg')] bg-cover bg-center"
-> -->
 <section
 	class="relative flex min-h-[600px] w-full items-center justify-center overflow-hidden bg-gray-100"
 >
-	<!-- Display rijekaFirst as background image -->
 	<div
 		style="background-image: url({rijekaFirst});"
 		class="absolute inset-0 scale-105 bg-cover bg-center blur-xs"
 	></div>
 
 	<div class="relative z-10 p-4 text-center">
-		<!-- <div class="absolute inset-0 bg-black/40"></div> -->
-
 		<div
 			class="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6 py-12 md:flex-row md:gap-8 md:px-4"
 		>
 			<div class="flex-1 rounded-2xl bg-white/95 p-6 shadow-xl backdrop-blur md:p-8">
 				<h1 class="mb-6 text-2xl font-bold text-gray-800 md:text-3xl">Pronađite svoj novi dom</h1>
 
-				<form class="space-y-5" onsubmit={(e) => e.preventDefault()}>
+				<form method="GET" action="/pretraga" class="space-y-5 text-left">
 					<div class="flex rounded-lg bg-gray-200 p-1">
 						<button
 							type="button"
-							class="flex-1 rounded-md py-2 text-sm font-semibold transition-all {tipUsluge ===
-							'Prodaja'
-								? 'bg-white text-blue-900 shadow'
+							class="flex-1 rounded-md py-2 text-sm font-semibold transition-all {listingType ===
+							'sale'
+								? 'bg-white text-gray-900 shadow'
 								: 'text-gray-600 hover:text-gray-900'}"
-							onclick={() => (tipUsluge = 'Prodaja')}
+							onclick={() => (listingType = 'sale')}
 						>
 							Prodaja
 						</button>
 						<button
 							type="button"
-							class="flex-1 rounded-md py-2 text-sm font-semibold transition-all {tipUsluge ===
-							'Najam'
-								? 'bg-white text-blue-900 shadow'
+							class="flex-1 rounded-md py-2 text-sm font-semibold transition-all {listingType ===
+							'rent'
+								? 'bg-white text-gray-900 shadow'
 								: 'text-gray-600 hover:text-gray-900'}"
-							onclick={() => (tipUsluge = 'Najam')}
+							onclick={() => (listingType = 'rent')}
 						>
 							Najam
 						</button>
 					</div>
+					<input type="hidden" name="listing" value={listingType} />
 
 					<div>
-						<label for="tipNekretnine" class="mb-1 block text-sm font-medium text-gray-700"
+						<label for="type" class="mb-1 block text-sm font-medium text-gray-700"
 							>Vrsta nekretnine</label
 						>
 						<select
-							id="tipNekretnine"
-							bind:value={tipNekretnine}
-							class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-blue-500 focus:ring-blue-500"
+							id="type"
+							name="type"
+							bind:value={propertyType}
+							class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-yellow-500 focus:ring-yellow-500"
 						>
-							{#each vrsteNekretnina as vrsta}
-								<option value={vrsta}>{vrsta}</option>
+							<option value="">Sve vrste</option>
+							{#each propertyTypes as option}
+								<option value={option.value}>{option.label}</option>
 							{/each}
 						</select>
 					</div>
@@ -90,15 +95,17 @@
 						<div class="flex gap-3">
 							<input
 								type="number"
-								bind:value={cijenaMin}
+								name="minPrice"
+								min="0"
 								placeholder="Min cijena"
-								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:ring-blue-500"
+								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-yellow-500 focus:ring-yellow-500"
 							/>
 							<input
 								type="number"
-								bind:value={cijenaMax}
+								name="maxPrice"
+								min="0"
 								placeholder="Max cijena"
-								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:ring-blue-500"
+								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-yellow-500 focus:ring-yellow-500"
 							/>
 						</div>
 					</div>
@@ -108,36 +115,95 @@
 						<div class="flex gap-3">
 							<input
 								type="number"
-								bind:value={kvadraturaMin}
+								name="minSqm"
+								min="0"
 								placeholder="Min m²"
-								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:ring-blue-500"
+								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-yellow-500 focus:ring-yellow-500"
 							/>
 							<input
 								type="number"
-								bind:value={kvadraturaMax}
+								name="maxSqm"
+								min="0"
 								placeholder="Max m²"
-								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:ring-blue-500"
+								class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-yellow-500 focus:ring-yellow-500"
 							/>
 						</div>
 					</div>
 
-					<div>
-						<label for="grad" class="mb-1 block text-sm font-medium text-gray-700">Lokacija</label>
-						<select
-							id="grad"
-							bind:value={grad}
-							class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-blue-500 focus:ring-blue-500"
-						>
-							<option value="" disabled selected>Odaberite grad</option>
-							{#each gradovi as g}
-								<option value={g}>{g}</option>
-							{/each}
-						</select>
+					<div class="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+						<p class="text-sm font-semibold text-gray-800">Lokacija</p>
+
+						{#if counties.length === 0}
+							<p class="text-xs text-gray-500">
+								Lokacijski filteri bit će dostupni kad odobreni oglasi imaju spremljenu lokaciju.
+							</p>
+						{:else}
+							<div>
+								<label for="county" class="mb-1.5 block text-xs font-medium text-gray-700"
+									>Županija</label
+								>
+								<select
+									id="county"
+									name="county"
+									bind:value={selectedCounty}
+									onchange={onCountyChange}
+									class="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm outline-none focus:border-yellow-500"
+								>
+									<option value="">Sve županije</option>
+									{#each counties as county}
+										<option value={county}>{county}</option>
+									{/each}
+								</select>
+							</div>
+
+							<div>
+								<label for="city" class="mb-1.5 block text-xs font-medium text-gray-700">Grad</label
+								>
+								<select
+									id="city"
+									name="city"
+									bind:value={selectedCity}
+									disabled={!selectedCounty}
+									class="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm outline-none focus:border-yellow-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+								>
+									<option value=""
+										>{selectedCounty ? 'Svi gradovi' : 'Prvo odaberite županiju'}</option
+									>
+									{#each cities as city}
+										<option value={city}>{city}</option>
+									{/each}
+								</select>
+							</div>
+
+							{#if selectedCity && availableNeighborhoods.length > 0}
+								<fieldset>
+									<legend class="mb-2 block text-xs font-medium text-gray-700">Kvartovi</legend>
+									<div
+										class="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3"
+									>
+										{#each availableNeighborhoods as neighborhood}
+											<label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+												<input
+													type="checkbox"
+													name="neighborhood"
+													value={neighborhood}
+													class="rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+												/>
+												{neighborhood}
+											</label>
+										{/each}
+									</div>
+									<p class="mt-1 text-xs text-gray-500">Možete odabrati više kvartova odjednom</p>
+								</fieldset>
+							{:else if selectedCity}
+								<p class="text-xs text-gray-500">Nema dostupnih kvartova za odabrani grad.</p>
+							{/if}
+						{/if}
 					</div>
 
 					<button
 						type="submit"
-						class="w-full rounded-lg bg-linear-to-r from-gray-900 to-gray-600 py-3 py-4 text-lg font-bold text-white transition-colors transition-transform hover:-translate-y-1 hover:bg-blue-700"
+						class="w-full rounded-xl bg-linear-to-br from-yellow-500 to-yellow-600 py-4 text-lg font-bold text-white shadow-md transition-colors hover:bg-yellow-600"
 					>
 						Pretraži nekretnine
 					</button>
@@ -150,21 +216,22 @@
 				<h2 class="mb-4 text-2xl font-bold text-gray-800 md:text-3xl">
 					Pridružite se stotinama drugih oglašivača
 				</h2>
-				<p class="mb-8 text-gray-600">
+				<p class="mb-8 text-lg text-gray-600">
 					Oglasite svoju nekretninu brzo, jednostavno i bez provizije.
 				</p>
 
 				<div
-					class="mb-8 flex aspect-auto w-full items-center justify-center overflow-hidden rounded-xl bg-gray-200 md:aspect-video"
+					class="mb-8 flex aspect-auto w-full items-center justify-center overflow-hidden rounded-xl bg-gray-200"
 				>
 					<MapPreview {listings} />
 				</div>
 
-				<button
-					class="to--600 w-full transform rounded-xl bg-green-500 bg-linear-to-r from-blue-900 to-blue-500 py-4 text-lg font-bold text-white shadow-lg transition-transform hover:-translate-y-1 hover:bg-green-600"
+				<a
+					href="/objavi-oglas"
+					class="block w-full rounded-xl bg-linear-to-br from-yellow-500 to-yellow-600 py-4 text-lg font-bold text-white shadow-md transition-colors hover:bg-yellow-600"
 				>
 					Objavite oglas
-				</button>
+				</a>
 			</div>
 		</div>
 	</div>

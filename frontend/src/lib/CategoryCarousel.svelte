@@ -1,35 +1,49 @@
 <script lang="ts">
-	// Dummy data - replace with your actual categories
-	const categories = [
+	import { goto } from '$app/navigation';
+	import { DEFAULT_SEARCH_FILTERS, searchHref } from '$lib/properties/search';
+	import type { PropertyType } from '$lib/types/property';
+
+	const categories: {
+		id: number;
+		title: string;
+		img: string;
+		propertyType: PropertyType | null;
+	}[] = [
 		{
 			id: 1,
 			title: 'Stanovi',
-			img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2'
+			img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2',
+			propertyType: 'apartment'
 		},
 		{
 			id: 2,
 			title: 'Kuće',
-			img: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'
+			img: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
+			propertyType: 'house'
 		},
 		{
 			id: 3,
 			title: 'Zemljišta',
-			img: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80'
+			img: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80',
+			propertyType: null
 		},
 		{
 			id: 4,
 			title: 'Poslovni prostori',
-			img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
+			img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
+			propertyType: 'business'
 		},
 		{
 			id: 5,
 			title: 'Garaže',
-			img: 'https://plus.unsplash.com/premium_photo-1673886205989-24c637783c60?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+			img: 'https://plus.unsplash.com/premium_photo-1673886205989-24c637783c60?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+			propertyType: 'garage'
 		},
 		{
 			id: 6,
 			title: 'Sobe',
-			img: 'https://plus.unsplash.com/premium_photo-1717026836061-32ec43465f9b?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+			img: 'https://plus.unsplash.com/premium_photo-1717026836061-32ec43465f9b?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+			propertyType: 'room'
 		}
 	];
 
@@ -44,8 +58,6 @@
 		currentIndex = (currentIndex - 1 + categories.length) % categories.length;
 	}
 
-	// Calculates the relative position of a card compared to the center
-	// Handles the "infinite" wrap-around math
 	function getOffset(index: number) {
 		let offset = index - currentIndex;
 		const half = Math.floor(categories.length / 2);
@@ -56,7 +68,6 @@
 		return offset;
 	}
 
-	// Mobile Swipe Handlers
 	function handleTouchStart(e: TouchEvent) {
 		touchStartX = e.touches[0].clientX;
 	}
@@ -65,9 +76,17 @@
 		const touchEndX = e.changedTouches[0].clientX;
 		const diff = touchStartX - touchEndX;
 
-		// Minimum swipe distance of 50px to trigger change
 		if (diff > 50) next();
 		else if (diff < -50) prev();
+	}
+
+	function openCategorySearch(propertyType: PropertyType | null) {
+		goto(
+			searchHref({
+				...DEFAULT_SEARCH_FILTERS,
+				propertyType: propertyType ?? ''
+			})
+		);
 	}
 </script>
 
@@ -81,18 +100,17 @@
 	>
 		{#each categories as cat, i}
 			{@const offset = getOffset(i)}
-			<div
-				class="absolute h-full w-[280px] cursor-pointer overflow-hidden rounded-2xl shadow-2xl transition-all duration-500 ease-out sm:w-[400px]"
+			<button
+				type="button"
+				class="absolute h-full w-[280px] cursor-pointer overflow-hidden rounded-2xl border-0 p-0 shadow-2xl transition-all duration-500 ease-out sm:w-[400px]"
 				style="
           transform: translateX({offset * 65}%) scale({1 - Math.abs(offset) * 0.2});
           opacity: {1 - Math.abs(offset) * 0.5};
           z-index: {10 - Math.abs(offset)};
           pointer-events: {Math.abs(offset) > 1 ? 'none' : 'auto'};
         "
-				onclick={() => {
-					if (offset === 1) next();
-					if (offset === -1) prev();
-				}}
+				aria-label="Pretraži {cat.title}"
+				onclick={() => openCategorySearch(cat.propertyType)}
 			>
 				<img src={cat.img} alt={cat.title} class="h-full w-full object-cover" />
 				<div
@@ -105,7 +123,7 @@
 				>
 					<h3 class="text-xl font-bold text-white sm:text-2xl">{cat.title}</h3>
 				</div>
-			</div>
+			</button>
 		{/each}
 	</div>
 

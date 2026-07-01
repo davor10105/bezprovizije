@@ -9,7 +9,11 @@
 </script>
 
 <main class="min-h-screen bg-gray-50 text-gray-800">
-	<SearchPublish listings={data.mapListings} />
+	<SearchPublish
+		listings={data.mapListings}
+		locationHierarchy={data.locationHierarchy}
+		propertyTypes={data.propertyTypes}
+	/>
 	<!-- Hero -->
 	<section class="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10">
 		<div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-8">
