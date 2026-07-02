@@ -32,6 +32,7 @@
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Ime i prezime</th>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Telefon</th>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Uloga</th>
+				<th class="px-4 py-3 text-left font-semibold text-gray-700">BP stanje</th>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Registriran</th>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Akcije</th>
 			</tr>
@@ -49,6 +50,49 @@
 						>
 							{user.role === 'admin' ? 'Administrator' : 'Korisnik'}
 						</span>
+					</td>
+					<td class="px-4 py-3">
+						<div class="flex flex-col gap-2">
+							<span class="font-semibold text-gray-900">{user.bp_balance ?? 0} BP</span>
+							<form
+								method="POST"
+								action="?/adjustBp"
+								class="flex items-center gap-1"
+								use:enhance={() => async ({ update }) => {
+									await update({ reset: false });
+									await invalidateAll();
+								}}
+							>
+								<input type="hidden" name="id" value={user.id} />
+								<input
+									type="number"
+									name="magnitude"
+									min="1"
+									step="1"
+									placeholder="BP"
+									required
+									class="w-16 rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-yellow-500 focus:outline-none"
+								/>
+								<button
+									type="submit"
+									name="direction"
+									value="add"
+									class="rounded-lg bg-green-100 px-2 py-1 text-xs font-semibold text-green-800 hover:bg-green-200"
+									title="Dodaj BP"
+								>
+									+
+								</button>
+								<button
+									type="submit"
+									name="direction"
+									value="remove"
+									class="rounded-lg bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-200"
+									title="Oduzmi BP"
+								>
+									−
+								</button>
+							</form>
+						</div>
 					</td>
 					<td class="px-4 py-3 text-gray-500">
 						{new Date(user.created_at).toLocaleDateString('hr-HR')}
@@ -97,7 +141,7 @@
 				</tr>
 			{:else}
 				<tr>
-					<td colspan="5" class="px-4 py-8 text-center text-gray-500">Nema korisnika.</td>
+					<td colspan="6" class="px-4 py-8 text-center text-gray-500">Nema korisnika.</td>
 				</tr>
 			{/each}
 		</tbody>

@@ -126,7 +126,7 @@
 
 	{#if data.other.length === 0}
 		<p class="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-gray-500">
-			Nema odobrenih ili odbijenih oglasa.
+			Nema odobrenih oglasa.
 		</p>
 	{:else}
 		<div class="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">

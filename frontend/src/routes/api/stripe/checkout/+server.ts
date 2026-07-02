@@ -58,6 +58,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase }, url 
 
 	const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
 		mode: 'payment',
+		// Show Checkout in the customer's browser language (Croatian when set).
+		locale: 'auto',
 		line_items: [
 			{
 				price_data: {

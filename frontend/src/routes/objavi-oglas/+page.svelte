@@ -144,13 +144,14 @@
 		<div class:hidden={step !== 1} class="space-y-6">
 			<div>
 				<span class="block text-sm font-semibold text-gray-700">Vrsta transakcije</span>
-				<div class="mt-3 grid grid-cols-2 gap-3">
+				<div class="mt-3 grid grid-cols-2 gap-4">
 					{#each Object.entries(data.listingTypeLabels) as [value, label]}
+						{@const cost = value === 'sale' ? saleBpCost : rentBpCost}
+						{@const selected = listingType === value}
 						<label
-							class="flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-4 text-center text-sm font-semibold transition {listingType ===
-							value
-								? 'border-yellow-500 bg-yellow-50 text-yellow-900'
-								: 'border-gray-200 text-gray-700 hover:border-gray-300'}"
+							class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 px-4 py-6 text-center transition {selected
+								? 'border-yellow-500 bg-yellow-50 shadow-md'
+								: 'border-gray-200 hover:border-gray-300'}"
 						>
 							<input
 								type="radio"
@@ -159,7 +160,23 @@
 								bind:group={listingType}
 								class="sr-only"
 							/>
-							{label}
+							<span class="text-lg font-bold {selected ? 'text-yellow-900' : 'text-gray-900'}">
+								{label}
+							</span>
+							{#if userIsAdmin}
+								<span
+									class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold tracking-wide text-green-800 uppercase"
+								>
+									Besplatno
+								</span>
+							{:else}
+								<span
+									class="flex items-baseline gap-1 rounded-full bg-white px-4 py-1.5 shadow-sm ring-1 ring-yellow-200"
+								>
+									<span class="text-2xl font-extrabold text-gray-900">{cost}</span>
+									<span class="text-sm font-bold text-yellow-700">BP</span>
+								</span>
+							{/if}
 						</label>
 					{/each}
 				</div>
@@ -168,38 +185,36 @@
 						{stepErrors.listing_type || formErrors.listing_type}
 					</p>
 				{/if}
+
+				<p
+					class="mt-3 flex items-start gap-2 rounded-xl bg-blue-50 px-4 py-3 text-xs text-blue-800"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="mt-0.5 h-4 w-4 shrink-0"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					<span>Vaš oglas ostaje online sve do prodaje ili najma nekretnine.</span>
+				</p>
 			</div>
 
 			{#if !userIsAdmin}
 				<div class="rounded-2xl border border-yellow-200 bg-linear-to-br from-yellow-50 to-amber-50 p-5 shadow-sm">
-					<p class="text-sm font-bold tracking-wide text-yellow-900 uppercase">Cijena objave</p>
-					<p class="mt-1 text-xs text-yellow-800">
+					<p class="text-xs text-yellow-800">
 						Vaše stanje: <span class="font-bold">{currentBalance} BP</span>
 					</p>
 
-					<div class="mt-4 grid grid-cols-2 gap-3">
-						<div
-							class="rounded-xl border-2 px-4 py-4 text-center transition {listingType === 'sale'
-								? 'border-yellow-500 bg-white shadow-sm'
-								: 'border-yellow-100 bg-white/70'}"
-						>
-							<p class="text-xs font-semibold tracking-wide text-gray-500 uppercase">Prodaja</p>
-							<p class="mt-1 text-2xl font-extrabold text-gray-900">{saleBpCost}</p>
-							<p class="text-xs font-medium text-yellow-700">BP</p>
-						</div>
-						<div
-							class="rounded-xl border-2 px-4 py-4 text-center transition {listingType === 'rent'
-								? 'border-yellow-500 bg-white shadow-sm'
-								: 'border-yellow-100 bg-white/70'}"
-						>
-							<p class="text-xs font-semibold tracking-wide text-gray-500 uppercase">Najam</p>
-							<p class="mt-1 text-2xl font-extrabold text-gray-900">{rentBpCost}</p>
-							<p class="text-xs font-medium text-yellow-700">BP</p>
-						</div>
-					</div>
-
 					{#if listingType && !hasEnoughBp}
-						<div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+						<div class="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
 							Nedostaje vam {selectedBpCost - currentBalance} BP za objavu odabranog oglasa.
 						</div>
 						<a

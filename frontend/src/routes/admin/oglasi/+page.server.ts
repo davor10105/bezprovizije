@@ -70,6 +70,16 @@ export const actions: Actions = {
 			.eq('id', id);
 
 		if (error) return fail(500, { message: error.message });
+
+		const { error: refundError } = await supabase.rpc(
+			'admin_refund_listing_bp' as never,
+			{ p_property_id: id } as never
+		);
+
+		if (refundError) {
+			console.error('BP refund on rejection failed:', refundError.message);
+		}
+
 		return { success: true };
 	}
 };

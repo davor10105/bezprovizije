@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 
 	const { data: users, error, count } = await supabase
 		.from('profiles')
-		.select('id, full_name, phone, role, created_at', { count: 'exact' })
+		.select('id, full_name, phone, role, bp_balance, created_at', { count: 'exact' })
 		.order('created_at', { ascending: false })
 		.range(from, to);
 
@@ -54,6 +54,38 @@ export const actions: Actions = {
 		const { error } = await supabase.from('profiles').update({ role }).eq('id', id);
 
 		if (error) return fail(500, { message: error.message });
+		return { success: true };
+	},
+
+	adjustBp: async ({ request, locals: { supabase } }) => {
+		await requireAdmin(supabase);
+		const formData = await request.formData();
+		const id = formData.get('id') as string;
+		const direction = formData.get('direction') as string;
+		const magnitude = Number(formData.get('magnitude'));
+
+		if (!id || !Number.isInteger(magnitude) || magnitude <= 0) {
+			return fail(400, { message: 'Unesite ispravan broj BP tokena (veći od nule).' });
+		}
+
+		if (direction !== 'add' && direction !== 'remove') {
+			return fail(400, { message: 'Neispravan zahtjev.' });
+		}
+
+		const amount = direction === 'remove' ? -magnitude : magnitude;
+
+		const { data: ok, error } = await supabase.rpc(
+			'admin_adjust_bp' as never,
+			{ p_user_id: id, p_amount: amount } as never
+		);
+
+		if (error) return fail(500, { message: error.message });
+		if (!ok) {
+			return fail(400, {
+				message: 'Promjena BP stanja nije uspjela. Stanje ne može biti negativno.'
+			});
+		}
+
 		return { success: true };
 	}
 };

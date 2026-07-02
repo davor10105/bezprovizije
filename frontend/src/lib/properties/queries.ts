@@ -383,7 +383,7 @@ export async function fetchAdminListings(
 	if (options.approvalStatus === 'pending') {
 		query = query.eq('approval_status', 'pending');
 	} else {
-		query = query.in('approval_status', ['approved', 'rejected']);
+		query = query.eq('approval_status', 'approved');
 	}
 
 	const { data, error, count } = await query;
