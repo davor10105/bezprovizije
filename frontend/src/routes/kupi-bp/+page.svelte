@@ -77,7 +77,7 @@
 				id="bpAmount"
 				type="number"
 				min="1"
-				max="1000"
+				max="100000"
 				bind:value={bpAmount}
 				class="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500"
 			/>
@@ -86,7 +86,7 @@
 
 		<div>
 			<p class="mb-3 text-sm font-semibold text-gray-700">Način plaćanja</p>
-			<div class="grid gap-3 sm:grid-cols-2">
+			<div class="grid gap-3 sm:grid-cols-3">
 				<label
 					class="flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-4 text-center text-sm font-semibold transition {paymentMethod ===
 					'card'
@@ -95,6 +95,15 @@
 				>
 					<input type="radio" bind:group={paymentMethod} value="card" class="sr-only" />
 					Kartica
+				</label>
+				<label
+					class="flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-4 text-center text-sm font-semibold transition {paymentMethod ===
+					'sepa_debit'
+						? 'border-yellow-500 bg-yellow-50 text-yellow-900'
+						: 'border-gray-200 text-gray-700 hover:border-gray-300'}"
+				>
+					<input type="radio" bind:group={paymentMethod} value="sepa_debit" class="sr-only" />
+					SEPA izravno terećenje
 				</label>
 				<label
 					class="flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-4 text-center text-sm font-semibold transition {paymentMethod ===
@@ -114,6 +123,11 @@
 			{#if paymentMethod === 'bank_transfer'}
 				<p class="mt-2 text-xs text-gray-500">
 					Tokeni se dodaju na račun nakon što Stripe potvrdi bankovnu uplatu.
+				</p>
+			{:else if paymentMethod === 'sepa_debit'}
+				<p class="mt-2 text-xs text-gray-500">
+					Unosite IBAN i odobravate izravno terećenje. Tokeni se dodaju nakon što banka potvrdi
+					uplatu (može potrajati nekoliko dana).
 				</p>
 			{/if}
 		</div>

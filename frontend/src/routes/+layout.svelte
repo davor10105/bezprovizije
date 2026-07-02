@@ -89,14 +89,17 @@
 				<div class="hidden items-center space-x-3 md:flex">
 					{#if isLoggedIn}
 						<a
-							href="/account"
-							class="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-gray-900"
+							href="/kupi-bp"
+							class="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-bold text-yellow-800 transition-colors hover:bg-yellow-200"
+							title="Kupi BP tokene"
 						>
-							<span>{profile?.full_name || 'Moj račun'}</span>
-							<span
-								class="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800"
-								>{profile?.bp_balance ?? 0} BP</span
-							>
+							{profile?.bp_balance ?? 0} BP
+						</a>
+						<a
+							href="/account"
+							class="font-medium text-gray-600 transition-colors hover:text-gray-900"
+						>
+							{profile?.full_name || 'Moj račun'}
 						</a>
 						{#if profile?.role === 'admin'}
 							<a
@@ -280,15 +283,22 @@
 						<div class="flex flex-col gap-3 pt-2">
 							{#if isLoggedIn}
 								<a
-									href="/account"
+									href="/kupi-bp"
 									onclick={closeMenu}
-									class="flex w-full items-center justify-between rounded-xl border-2 border-gray-200 px-4 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
+									class="flex w-full items-center justify-between rounded-xl border-2 border-yellow-200 bg-yellow-50 px-4 py-3 text-lg font-semibold text-yellow-800 transition hover:bg-yellow-100"
 								>
-									<span>{profile?.full_name || 'Moj račun'}</span>
+									<span>BP stanje</span>
 									<span
-										class="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800"
+										class="rounded-full bg-yellow-100 px-2.5 py-0.5 text-sm font-bold text-yellow-800"
 										>{profile?.bp_balance ?? 0} BP</span
 									>
+								</a>
+								<a
+									href="/account"
+									onclick={closeMenu}
+									class="flex w-full justify-center rounded-xl border-2 border-gray-200 px-4 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
+								>
+									{profile?.full_name || 'Moj račun'}
 								</a>
 								{#if profile?.role === 'admin'}
 									<a
