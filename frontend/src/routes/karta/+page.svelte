@@ -22,8 +22,23 @@
 
 	// Zadani status je sada isključivo 'sale' (Prodaja) ili 'rent' (Najam)
 	let filterStatus = $state('sale');
-	let maxPrice = $state(1000000);
-	let minSqm = $state(0);
+	let minPrice = $state<number | null>(null);
+	let maxPrice = $state<number | null>(null);
+	let minSqm = $state<number | null>(null);
+	let maxSqm = $state<number | null>(null);
+
+	function onFilterNumberInput(
+		setter: (value: number | null) => void,
+		event: Event & { currentTarget: HTMLInputElement }
+	) {
+		const raw = event.currentTarget.value.trim();
+		if (!raw) {
+			setter(null);
+			return;
+		}
+		const value = Number(raw);
+		setter(Number.isFinite(value) && value >= 0 ? value : null);
+	}
 
 	// Checkbox state za tipove nekretnina
 	let typeFilters = $state(
@@ -33,8 +48,10 @@
 	let filteredProperties = $derived(
 		properties.filter((p) => {
 			const matchesStatus = p.status === filterStatus; // Striktno podudaranje
-			const matchesPrice = p.price <= maxPrice;
-			const matchesSqm = p.sqm >= minSqm;
+			const matchesPrice =
+				(minPrice == null || p.price >= minPrice) && (maxPrice == null || p.price <= maxPrice);
+			const matchesSqm =
+				(minSqm == null || p.sqm >= minSqm) && (maxSqm == null || p.sqm <= maxSqm);
 			const matchesType = typeFilters[p.type] ?? true;
 			return matchesStatus && matchesPrice && matchesSqm && matchesType;
 		})
@@ -279,8 +296,10 @@
 						<button
 							class="text-sm font-semibold text-gray-500 underline hover:text-yellow-600"
 							onclick={() => {
-								maxPrice = 1000000;
-								minSqm = 0;
+								minPrice = null;
+								maxPrice = null;
+								minSqm = null;
+								maxSqm = null;
 								Object.keys(typeFilters).forEach((k) => (typeFilters[k] = true));
 							}}>Poništi</button
 						>
@@ -306,34 +325,72 @@
 
 						<!-- Cijena -->
 						<div>
-							<label class="mb-2 flex justify-between text-sm font-bold text-gray-700">
-								<span>Maks. cijena</span>
-								<span class="text-yellow-600">{formatFullPrice(maxPrice)}</span>
-							</label>
-							<input
-								type="range"
-								min="50"
-								max="1000000"
-								step="1000"
-								bind:value={maxPrice}
-								class="w-full accent-yellow-500"
-							/>
+							<label class="mb-3 block text-sm font-bold text-gray-700">Cijena (€)</label>
+							<div class="grid grid-cols-2 gap-3">
+								<div>
+									<label for="minPrice" class="mb-1.5 block text-xs font-medium text-gray-500"
+										>Od</label
+									>
+									<input
+										id="minPrice"
+										type="number"
+										min="0"
+										value={minPrice ?? ''}
+										placeholder="Min"
+										oninput={(e) => onFilterNumberInput((v) => (minPrice = v), e)}
+										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+									/>
+								</div>
+								<div>
+									<label for="maxPrice" class="mb-1.5 block text-xs font-medium text-gray-500"
+										>Do</label
+									>
+									<input
+										id="maxPrice"
+										type="number"
+										min="0"
+										value={maxPrice ?? ''}
+										placeholder="Max"
+										oninput={(e) => onFilterNumberInput((v) => (maxPrice = v), e)}
+										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+									/>
+								</div>
+							</div>
 						</div>
 
 						<!-- Kvadratura -->
 						<div>
-							<label class="mb-2 flex justify-between text-sm font-bold text-gray-700">
-								<span>Min. kvadratura</span>
-								<span class="text-yellow-600">{minSqm} m²</span>
-							</label>
-							<input
-								type="range"
-								min="0"
-								max="500"
-								step="10"
-								bind:value={minSqm}
-								class="w-full accent-yellow-500"
-							/>
+							<label class="mb-3 block text-sm font-bold text-gray-700">Površina (m²)</label>
+							<div class="grid grid-cols-2 gap-3">
+								<div>
+									<label for="minSqm" class="mb-1.5 block text-xs font-medium text-gray-500"
+										>Od</label
+									>
+									<input
+										id="minSqm"
+										type="number"
+										min="0"
+										value={minSqm ?? ''}
+										placeholder="Min"
+										oninput={(e) => onFilterNumberInput((v) => (minSqm = v), e)}
+										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+									/>
+								</div>
+								<div>
+									<label for="maxSqm" class="mb-1.5 block text-xs font-medium text-gray-500"
+										>Do</label
+									>
+									<input
+										id="maxSqm"
+										type="number"
+										min="0"
+										value={maxSqm ?? ''}
+										placeholder="Max"
+										oninput={(e) => onFilterNumberInput((v) => (maxSqm = v), e)}
+										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+									/>
+								</div>
+							</div>
 						</div>
 					</div>
 
