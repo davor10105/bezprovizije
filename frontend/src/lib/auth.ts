@@ -112,7 +112,7 @@ export async function getProfile(
 ): Promise<Profile | null> {
 	const { data, error } = await supabase
 		.from('profiles')
-		.select('id, full_name, phone, role, created_at, updated_at')
+		.select('id, full_name, phone, role, bp_balance, created_at, updated_at')
 		.eq('id', userId)
 		.maybeSingle();
 

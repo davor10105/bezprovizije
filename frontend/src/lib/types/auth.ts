@@ -5,6 +5,7 @@ export type Profile = {
 	full_name: string;
 	phone: string;
 	role: UserRole;
+	bp_balance: number;
 	created_at: string;
 	updated_at: string;
 };

@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { isAdmin, isProfileComplete, requireAuth } from '$lib/auth';
 import { parseListingForm } from '$lib/properties/listingForm';
 import { resolveLocationFromCoords } from '$lib/properties/location';
+import { fetchTokenSettings, listingBpCost } from '$lib/tokens/queries';
 import {
 	ATTRIBUTE_FIELDS_BY_TYPE,
 	CORE_OPTIONAL_FIELDS,
@@ -21,6 +22,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 	return {
 		user,
 		profile,
+		tokenSettings: await fetchTokenSettings(supabase),
 		propertyTypeConfig: PROPERTY_TYPE_CONFIG,
 		listingTypeLabels: LISTING_TYPE_LABELS,
 		coreOptionalFields: CORE_OPTIONAL_FIELDS,
@@ -44,6 +46,19 @@ export const actions: Actions = {
 		}
 
 		const autoApproved = isAdmin(profile);
+		const listingCost = listingBpCost(
+			await fetchTokenSettings(supabase),
+			payload.listing_type
+		);
+
+		if (!autoApproved && (profile?.bp_balance ?? 0) < listingCost) {
+			return fail(402, {
+				errors: {
+					form: `Nemate dovoljno BP tokena. Potrebno je ${listingCost} BP, a imate ${profile?.bp_balance ?? 0} BP.`
+				}
+			});
+		}
+
 		const location = await resolveLocationFromCoords(fetch, payload.lat, payload.lng);
 
 		const { data: property, error: propertyError } = await supabase
@@ -79,6 +94,26 @@ export const actions: Actions = {
 			});
 		}
 
+		if (!autoApproved) {
+			const { data: deducted, error: deductError } = await supabase.rpc(
+				'deduct_listing_bp' as never,
+				{
+					p_listing_type: payload.listing_type,
+					p_property_id: property.id
+				} as never
+			);
+
+			if (deductError || !deducted) {
+				console.error('BP deduction failed:', deductError?.message);
+				await supabase.from('properties').delete().eq('id', property.id);
+				return fail(402, {
+					errors: {
+						form: 'Nemate dovoljno BP tokena za objavu ovog oglasa.'
+					}
+				});
+			}
+		}
+
 		for (let i = 0; i < images.length; i++) {
 			const image = images[i];
 			const ext = image.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -93,6 +128,9 @@ export const actions: Actions = {
 
 			if (uploadError) {
 				console.error('Image upload failed:', uploadError.message);
+				if (!autoApproved) {
+					await supabase.rpc('refund_listing_bp' as never, { p_property_id: property.id } as never);
+				}
 				await supabase.from('properties').delete().eq('id', property.id);
 				return fail(500, {
 					errors: { images: 'Učitavanje fotografija nije uspjelo. Pokušajte ponovno.' }
@@ -107,6 +145,9 @@ export const actions: Actions = {
 
 			if (imageRowError) {
 				console.error('Property image row failed:', imageRowError.message);
+				if (!autoApproved) {
+					await supabase.rpc('refund_listing_bp' as never, { p_property_id: property.id } as never);
+				}
 				await supabase.from('properties').delete().eq('id', property.id);
 				return fail(500, {
 					errors: { images: 'Spremanje fotografija nije uspjelo. Pokušajte ponovno.' }

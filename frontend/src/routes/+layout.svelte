@@ -90,9 +90,13 @@
 					{#if isLoggedIn}
 						<a
 							href="/account"
-							class="font-medium text-gray-600 transition-colors hover:text-gray-900"
+							class="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-gray-900"
 						>
-							{profile?.full_name || 'Moj račun'}
+							<span>{profile?.full_name || 'Moj račun'}</span>
+							<span
+								class="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800"
+								>{profile?.bp_balance ?? 0} BP</span
+							>
 						</a>
 						{#if profile?.role === 'admin'}
 							<a
@@ -278,9 +282,13 @@
 								<a
 									href="/account"
 									onclick={closeMenu}
-									class="flex w-full justify-center rounded-xl border-2 border-gray-200 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
+									class="flex w-full items-center justify-between rounded-xl border-2 border-gray-200 px-4 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
 								>
-									{profile?.full_name || 'Moj račun'}
+									<span>{profile?.full_name || 'Moj račun'}</span>
+									<span
+										class="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800"
+										>{profile?.bp_balance ?? 0} BP</span
+									>
 								</a>
 								{#if profile?.role === 'admin'}
 									<a

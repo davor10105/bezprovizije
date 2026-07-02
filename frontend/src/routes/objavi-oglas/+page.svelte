@@ -5,6 +5,8 @@
 	import type { ListingType, PropertyType } from '$lib/types/property';
 	import type { AttributeField } from '$lib/properties/schema';
 	import type { SubmitFunction } from '@sveltejs/kit';
+	import { isAdmin } from '$lib/auth';
+	import { listingBpCost } from '$lib/tokens/queries';
 
 	let { data, form } = $props();
 
@@ -29,10 +31,25 @@
 		propertyType ? data.attributeFieldsByType[propertyType as PropertyType] : []
 	);
 
+	const saleBpCost = $derived(listingBpCost(data.tokenSettings, 'sale'));
+	const rentBpCost = $derived(listingBpCost(data.tokenSettings, 'rent'));
+	const selectedBpCost = $derived(
+		listingType === 'sale' ? saleBpCost : listingType === 'rent' ? rentBpCost : 0
+	);
+	const userIsAdmin = $derived(isAdmin(data.profile));
+	const currentBalance = $derived(data.profile?.bp_balance ?? 0);
+	const hasEnoughBp = $derived(userIsAdmin || currentBalance >= selectedBpCost);
+	const buyBpHref = $derived(
+		`/kupi-bp?redirect=${encodeURIComponent('/objavi-oglas')}&amount=${Math.max(selectedBpCost - currentBalance, 1)}`
+	);
+
 	function validateStep1(): boolean {
 		const errors: Record<string, string> = {};
 		if (!propertyType) errors.property_type = 'Odaberite vrstu nekretnine.';
 		if (!listingType) errors.listing_type = 'Odaberite prodaju ili najam.';
+		if (!userIsAdmin && listingType && currentBalance < selectedBpCost) {
+			errors.tokens = `Potrebno je ${selectedBpCost} BP za objavu ovog oglasa.`;
+		}
 		stepErrors = errors;
 		return Object.keys(errors).length === 0;
 	}
@@ -152,6 +169,48 @@
 					</p>
 				{/if}
 			</div>
+
+			{#if !userIsAdmin}
+				<div class="rounded-2xl border border-yellow-200 bg-linear-to-br from-yellow-50 to-amber-50 p-5 shadow-sm">
+					<p class="text-sm font-bold tracking-wide text-yellow-900 uppercase">Cijena objave</p>
+					<p class="mt-1 text-xs text-yellow-800">
+						Vaše stanje: <span class="font-bold">{currentBalance} BP</span>
+					</p>
+
+					<div class="mt-4 grid grid-cols-2 gap-3">
+						<div
+							class="rounded-xl border-2 px-4 py-4 text-center transition {listingType === 'sale'
+								? 'border-yellow-500 bg-white shadow-sm'
+								: 'border-yellow-100 bg-white/70'}"
+						>
+							<p class="text-xs font-semibold tracking-wide text-gray-500 uppercase">Prodaja</p>
+							<p class="mt-1 text-2xl font-extrabold text-gray-900">{saleBpCost}</p>
+							<p class="text-xs font-medium text-yellow-700">BP</p>
+						</div>
+						<div
+							class="rounded-xl border-2 px-4 py-4 text-center transition {listingType === 'rent'
+								? 'border-yellow-500 bg-white shadow-sm'
+								: 'border-yellow-100 bg-white/70'}"
+						>
+							<p class="text-xs font-semibold tracking-wide text-gray-500 uppercase">Najam</p>
+							<p class="mt-1 text-2xl font-extrabold text-gray-900">{rentBpCost}</p>
+							<p class="text-xs font-medium text-yellow-700">BP</p>
+						</div>
+					</div>
+
+					{#if listingType && !hasEnoughBp}
+						<div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+							Nedostaje vam {selectedBpCost - currentBalance} BP za objavu odabranog oglasa.
+						</div>
+						<a
+							href={buyBpHref}
+							class="mt-3 flex w-full items-center justify-center rounded-xl bg-yellow-500 py-3 text-sm font-bold text-white transition-colors hover:bg-yellow-600"
+						>
+							Dodaj BP tokene
+						</a>
+					{/if}
+				</div>
+			{/if}
 
 			<div>
 				<span class="block text-sm font-semibold text-gray-700">Vrsta nekretnine</span>

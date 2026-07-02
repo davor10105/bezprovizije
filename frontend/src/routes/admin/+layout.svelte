@@ -28,6 +28,14 @@
 				>
 			{/if}
 		</a>
+		<a
+			href="/admin/tokeni"
+			class="border-b-2 px-4 py-2 text-sm font-semibold transition {data.activeTab === 'tokens'
+				? 'border-yellow-500 text-yellow-700'
+				: 'border-transparent text-gray-600 hover:text-gray-900'}"
+		>
+			BP tokeni
+		</a>
 	</nav>
 
 	<div class="mt-8">

@@ -12,7 +12,11 @@ export const load: LayoutServerLoad = async ({ url, locals: { supabase } }) => {
 	return {
 		user,
 		profile,
-		activeTab: url.pathname.startsWith('/admin/oglasi') ? 'listings' : 'users',
+		activeTab: url.pathname.startsWith('/admin/oglasi')
+			? 'listings'
+			: url.pathname.startsWith('/admin/tokeni')
+				? 'tokens'
+				: 'users',
 		pendingCount: count ?? 0
 	};
 };
