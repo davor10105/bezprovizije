@@ -20,8 +20,11 @@ export type SearchFilters = {
 	bathrooms: string;
 	minBuildYear: number | null;
 	minParking: number | null;
-	/** attribute key -> filter value (select option, "true"/"false", or min number as string) */
-	attributes: Record<string, string>;
+	/**
+	 * attribute key -> selected filter values. `select` fields can hold multiple
+	 * values (OR match); `boolean`/`number` fields use a single value in the array.
+	 */
+	attributes: Record<string, string[]>;
 };
 
 export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
@@ -45,6 +48,11 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
 
 const MULTI_VALUE_PARAMS = new Set(['neighborhood']);
 
+/** Attribute filter params are always allowed to repeat (multi-select selects). */
+function isMultiValueParam(key: string): boolean {
+	return MULTI_VALUE_PARAMS.has(key) || key.startsWith('a_');
+}
+
 function parseOptionalNumber(value: string | null): number | null {
 	if (!value?.trim()) return null;
 	const num = Number(value);
@@ -67,10 +75,16 @@ function parseSort(value: string | null): SearchSort {
 }
 
 export function parseSearchParams(params: URLSearchParams): SearchFilters {
-	const attributes: Record<string, string> = {};
-	for (const [key, value] of params.entries()) {
-		if (!key.startsWith('a_') || !value.trim()) continue;
-		attributes[key.slice(2)] = value.trim();
+	const attributes: Record<string, string[]> = {};
+	for (const key of params.keys()) {
+		if (!key.startsWith('a_')) continue;
+		const attrKey = key.slice(2);
+		if (attributes[attrKey]) continue;
+		const values = params
+			.getAll(key)
+			.map((v) => v.trim())
+			.filter(Boolean);
+		if (values.length > 0) attributes[attrKey] = values;
 	}
 
 	return {
@@ -114,8 +128,10 @@ export function searchParamsFromFilters(filters: SearchFilters, options?: { page
 	if (filters.minBuildYear != null) params.set('minBuildYear', String(filters.minBuildYear));
 	if (filters.minParking != null) params.set('minParking', String(filters.minParking));
 
-	for (const [key, value] of Object.entries(filters.attributes)) {
-		if (value) params.set(`a_${key}`, value);
+	for (const [key, values] of Object.entries(filters.attributes)) {
+		for (const value of values) {
+			if (value) params.append(`a_${key}`, value);
+		}
 	}
 
 	if (page > 1) params.set('page', String(page));
@@ -135,7 +151,7 @@ export function countActiveExtraFilters(filters: SearchFilters): number {
 	if (filters.bathrooms) count++;
 	if (filters.minBuildYear != null) count++;
 	if (filters.minParking != null) count++;
-	count += Object.values(filters.attributes).filter(Boolean).length;
+	count += Object.values(filters.attributes).filter((values) => values.length > 0).length;
 	return count;
 }
 
@@ -144,7 +160,7 @@ export function formDataToSearchParams(formData: FormData): URLSearchParams {
 
 	for (const [key, value] of formData.entries()) {
 		if (typeof value !== 'string' || !value.trim()) continue;
-		if (MULTI_VALUE_PARAMS.has(key)) {
+		if (isMultiValueParam(key)) {
 			params.append(key, value.trim());
 		} else {
 			params.set(key, value.trim());

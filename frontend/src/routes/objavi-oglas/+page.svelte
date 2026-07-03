@@ -3,7 +3,7 @@
 	import ImageUploadPreview from '$lib/ImageUploadPreview.svelte';
 	import LocationPicker from '$lib/LocationPicker.svelte';
 	import type { ListingType, PropertyType } from '$lib/types/property';
-	import type { AttributeField } from '$lib/properties/schema';
+	import { getAttributeFields, type AttributeField } from '$lib/properties/schema';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { isAdmin } from '$lib/auth';
 	import { listingBpCost } from '$lib/tokens/queries';
@@ -28,7 +28,7 @@
 		propertyType ? data.coreOptionalFields[propertyType as PropertyType] : null
 	);
 	const attributeFields = $derived(
-		propertyType ? data.attributeFieldsByType[propertyType as PropertyType] : []
+		propertyType ? getAttributeFields(propertyType as PropertyType, listingType) : []
 	);
 
 	const saleBpCost = $derived(listingBpCost(data.tokenSettings, 'sale'));

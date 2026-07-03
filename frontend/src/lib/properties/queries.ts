@@ -4,6 +4,7 @@ import type { ApprovalStatus, ListingType, PropertyType } from '$lib/types/prope
 import {
 	LISTING_TYPE_LABELS,
 	PROPERTY_TYPE_SEARCH_LABELS,
+	getAttributeFieldByKey,
 	getPublicImageUrl
 } from '$lib/properties/schema';
 import { pageRange, SEARCH_PAGE_SIZE } from '$lib/pagination';
@@ -235,27 +236,30 @@ export async function fetchSearchListings(
 		query = query.gte('parking_spaces', filters.minParking);
 	}
 
-	for (const [key, value] of Object.entries(filters.attributes)) {
-		if (!value) continue;
+	for (const [key, values] of Object.entries(filters.attributes)) {
+		const vals = values.filter(Boolean);
+		if (vals.length === 0) continue;
 
-		if (value.endsWith('+') && value.length > 1) {
-			const min = Number(value.slice(0, -1));
+		const fieldType = getAttributeFieldByKey(key)?.type;
+
+		if (fieldType === 'number') {
+			const min = Number(vals[0].replace(/\+$/, ''));
 			if (Number.isFinite(min)) {
 				query = query.filter(`attributes->${key}`, 'gte', min);
 			}
 			continue;
 		}
 
-		if (value === 'true' || value === 'false') {
-			query = query.eq(`attributes->>${key}`, value);
+		if (fieldType === 'boolean') {
+			query = query.eq(`attributes->>${key}`, vals[0]);
 			continue;
 		}
 
-		const asNumber = Number(value);
-		if (Number.isFinite(asNumber) && String(asNumber) === value) {
-			query = query.filter(`attributes->${key}`, 'gte', asNumber);
+		// select / text: multiple values are matched with OR (IN).
+		if (vals.length === 1) {
+			query = query.eq(`attributes->>${key}`, vals[0]);
 		} else {
-			query = query.eq(`attributes->>${key}`, value);
+			query = query.in(`attributes->>${key}`, vals);
 		}
 	}
 

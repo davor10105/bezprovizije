@@ -11,6 +11,11 @@ export type AttributeField = {
 	max?: number;
 	placeholder?: string;
 	searchable?: boolean;
+	/**
+	 * Restrict this field to specific listing types (e.g. only for rent).
+	 * Omit to make the field apply to both sale and rent.
+	 */
+	listingTypes?: ListingType[];
 };
 
 export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
@@ -74,6 +79,13 @@ export const ATTRIBUTE_FIELDS_BY_TYPE: Record<PropertyType, AttributeField[]> = 
 		{ key: 'balcony', label: 'Balkon', type: 'boolean', searchable: true },
 		{ key: 'elevator', label: 'Lift', type: 'boolean', searchable: true },
 		{ key: 'furnished', label: 'Namješteno', type: 'boolean', searchable: true },
+		{
+			key: 'pets_allowed',
+			label: 'Ljubimci dozvoljeni',
+			type: 'boolean',
+			searchable: true,
+			listingTypes: ['rent']
+		},
 		...COMMON_RESIDENTIAL
 	],
 	house: [
@@ -82,6 +94,13 @@ export const ATTRIBUTE_FIELDS_BY_TYPE: Record<PropertyType, AttributeField[]> = 
 		{ key: 'floors', label: 'Broj etaža', type: 'number', min: 1, max: 10 },
 		{ key: 'pool', label: 'Bazen', type: 'boolean', searchable: true },
 		{ key: 'furnished', label: 'Namješteno', type: 'boolean', searchable: true },
+		{
+			key: 'pets_allowed',
+			label: 'Ljubimci dozvoljeni',
+			type: 'boolean',
+			searchable: true,
+			listingTypes: ['rent']
+		},
 		...COMMON_RESIDENTIAL
 	],
 	business: [
@@ -102,7 +121,20 @@ export const ATTRIBUTE_FIELDS_BY_TYPE: Record<PropertyType, AttributeField[]> = 
 		{ key: 'furnished', label: 'Namješteno', type: 'boolean', searchable: true },
 		{ key: 'shared_bathroom', label: 'Zajednička kupaonica', type: 'boolean', searchable: true },
 		{ key: 'shared_kitchen', label: 'Zajednička kuhinja', type: 'boolean', searchable: true },
-		{ key: 'utilities_included', label: 'Režije uključene', type: 'boolean', searchable: true }
+		{
+			key: 'pets_allowed',
+			label: 'Ljubimci dozvoljeni',
+			type: 'boolean',
+			searchable: true,
+			listingTypes: ['rent']
+		},
+		{
+			key: 'utilities_included',
+			label: 'Režije uključene',
+			type: 'boolean',
+			searchable: true,
+			listingTypes: ['rent']
+		}
 	]
 };
 
@@ -121,17 +153,55 @@ export const CORE_OPTIONAL_FIELDS: Record<
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[];
 export const LISTING_TYPES = Object.keys(LISTING_TYPE_LABELS) as ListingType[];
 
-/** Unique searchable attribute fields across all property types (for /pretraga drawer). */
-export function getSearchableAttributeFields(): AttributeField[] {
+/**
+ * Attribute fields for a property type, optionally narrowed to a listing type.
+ * Used both by the listing form (/objavi-oglas, /uredi-oglas) and the search
+ * filters (/pretraga) so they always share the same schema.
+ */
+export function getAttributeFields(
+	propertyType: PropertyType,
+	listingType?: ListingType | ''
+): AttributeField[] {
+	return ATTRIBUTE_FIELDS_BY_TYPE[propertyType].filter((field) => {
+		if (!field.listingTypes || !listingType) return true;
+		return field.listingTypes.includes(listingType);
+	});
+}
+
+/**
+ * Searchable attribute fields for the /pretraga filters. When a property type is
+ * selected only that type's fields are returned; otherwise the union across all
+ * types is used. A listing type further narrows type-specific fields.
+ */
+export function getSearchableAttributeFields(
+	propertyType?: PropertyType | '',
+	listingType?: ListingType | ''
+): AttributeField[] {
+	const types = propertyType ? [propertyType] : PROPERTY_TYPES;
 	const seen = new Map<string, AttributeField>();
-	for (const type of PROPERTY_TYPES) {
-		for (const field of ATTRIBUTE_FIELDS_BY_TYPE[type]) {
+	for (const type of types) {
+		for (const field of getAttributeFields(type, listingType)) {
 			if (field.searchable) {
 				seen.set(field.key, field);
 			}
 		}
 	}
 	return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label, 'hr'));
+}
+
+const ATTRIBUTE_FIELD_BY_KEY: Map<string, AttributeField> = (() => {
+	const map = new Map<string, AttributeField>();
+	for (const type of PROPERTY_TYPES) {
+		for (const field of ATTRIBUTE_FIELDS_BY_TYPE[type]) {
+			if (!map.has(field.key)) map.set(field.key, field);
+		}
+	}
+	return map;
+})();
+
+/** Look up an attribute field definition by its key (across all property types). */
+export function getAttributeFieldByKey(key: string): AttributeField | undefined {
+	return ATTRIBUTE_FIELD_BY_KEY.get(key);
 }
 
 export function getPublicImageUrl(supabaseUrl: string, storagePath: string): string {

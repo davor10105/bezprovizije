@@ -4,6 +4,7 @@
 		formDataToSearchParams,
 		searchHref
 	} from '$lib/properties/search';
+	import { CORE_OPTIONAL_FIELDS, getSearchableAttributeFields } from '$lib/properties/schema';
 
 	let { data } = $props();
 
@@ -11,8 +12,21 @@
 	let extraFiltersOpen = $state(countActiveExtraFilters(data.filters) > 0);
 	let selectedCounty = $state(data.filters.county);
 	let selectedCity = $state(data.filters.city);
+	let selectedListingType = $state(data.filters.listingType);
+	let selectedPropertyType = $state(data.filters.propertyType);
 
 	const extraFilterCount = $derived(countActiveExtraFilters(data.filters));
+
+	// Additional filters follow the shared schema and update live as the user
+	// changes the property type and/or sale-vs-rent selection.
+	const attributeFields = $derived(
+		getSearchableAttributeFields(selectedPropertyType, selectedListingType)
+	);
+	const coreFilters = $derived(
+		selectedPropertyType
+			? CORE_OPTIONAL_FIELDS[selectedPropertyType]
+			: { rooms: true, bathrooms: true, build_year: true, parking_spaces: true }
+	);
 
 	const counties = $derived(Object.keys(data.locationHierarchy));
 	const cities = $derived(
@@ -94,11 +108,13 @@
 			class="fixed inset-0 z-40 h-full w-full overflow-y-auto bg-white p-6 transition-transform duration-300 md:sticky md:top-24 md:z-0 md:block md:w-80 md:shrink-0 md:rounded-2xl md:border md:border-gray-200 md:p-6 md:shadow-sm
             {mobileFiltersOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}"
 		>
-			<div class="mb-6 flex items-center justify-between md:mb-8">
+			<div
+				class="sticky top-0 z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between border-b border-gray-100 bg-white px-6 pt-6 pb-4 md:static md:mx-0 md:mt-0 md:mb-8 md:border-0 md:p-0"
+			>
 				<h2 class="text-xl font-bold text-gray-900">Filteri</h2>
 				<button
 					type="button"
-					class="text-gray-500 md:hidden"
+					class="rounded-lg p-1 text-2xl leading-none text-gray-500 hover:bg-gray-100 md:hidden"
 					onclick={() => (mobileFiltersOpen = false)}
 					aria-label="Zatvori filtere"
 				>
@@ -112,7 +128,7 @@
 					<select
 						id="listing"
 						name="listing"
-						value={data.filters.listingType || ''}
+						bind:value={selectedListingType}
 						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
 					>
 						<option value="">Prodaja i najam</option>
@@ -128,7 +144,7 @@
 					<select
 						id="type"
 						name="type"
-						value={data.filters.propertyType || ''}
+						bind:value={selectedPropertyType}
 						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
 					>
 						<option value="">Sve vrste</option>
@@ -306,96 +322,119 @@
 				>
 					<div class="overflow-hidden">
 						<div class="space-y-5 border-t border-gray-200 pt-5">
-							<div class="grid grid-cols-2 gap-2">
-								<div>
-									<label for="rooms" class="mb-1.5 block text-xs font-medium text-gray-700"
-										>Sobe</label
-									>
-									<select
-										id="rooms"
-										name="rooms"
-										value={data.filters.rooms || ''}
-										class="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-yellow-500"
-									>
-										<option value="">Sve</option>
-										<option value="1">1</option>
-										<option value="2">2</option>
-										<option value="3">3</option>
-										<option value="4+">4+</option>
-									</select>
+							{#if coreFilters.rooms || coreFilters.bathrooms}
+								<div class="grid grid-cols-2 gap-2">
+									{#if coreFilters.rooms}
+										<div>
+											<label for="rooms" class="mb-1.5 block text-xs font-medium text-gray-700"
+												>Sobe</label
+											>
+											<select
+												id="rooms"
+												name="rooms"
+												value={data.filters.rooms || ''}
+												class="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-yellow-500"
+											>
+												<option value="">Sve</option>
+												<option value="1">1</option>
+												<option value="2">2</option>
+												<option value="3">3</option>
+												<option value="4+">4+</option>
+											</select>
+										</div>
+									{/if}
+									{#if coreFilters.bathrooms}
+										<div>
+											<label for="bathrooms" class="mb-1.5 block text-xs font-medium text-gray-700"
+												>Kupaonice</label
+											>
+											<select
+												id="bathrooms"
+												name="bathrooms"
+												value={data.filters.bathrooms || ''}
+												class="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-yellow-500"
+											>
+												<option value="">Sve</option>
+												<option value="1">1</option>
+												<option value="2">2</option>
+												<option value="3+">3+</option>
+											</select>
+										</div>
+									{/if}
 								</div>
-								<div>
-									<label for="bathrooms" class="mb-1.5 block text-xs font-medium text-gray-700"
-										>Kupaonice</label
-									>
-									<select
-										id="bathrooms"
-										name="bathrooms"
-										value={data.filters.bathrooms || ''}
-										class="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-yellow-500"
-									>
-										<option value="">Sve</option>
-										<option value="1">1</option>
-										<option value="2">2</option>
-										<option value="3+">3+</option>
-									</select>
-								</div>
-							</div>
+							{/if}
 
-							<div class="grid grid-cols-2 gap-2">
-								<div>
-									<label for="minBuildYear" class="mb-1.5 block text-xs font-medium text-gray-700"
-										>Godina gradnje od</label
-									>
-									<input
-										id="minBuildYear"
-										name="minBuildYear"
-										type="number"
-										min="1800"
-										max="2100"
-										value={data.filters.minBuildYear ?? ''}
-										placeholder="npr. 2000"
-										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-									/>
+							{#if coreFilters.build_year || coreFilters.parking_spaces}
+								<div class="grid grid-cols-2 gap-2">
+									{#if coreFilters.build_year}
+										<div>
+											<label for="minBuildYear" class="mb-1.5 block text-xs font-medium text-gray-700"
+												>Godina gradnje od</label
+											>
+											<input
+												id="minBuildYear"
+												name="minBuildYear"
+												type="number"
+												min="1800"
+												max="2100"
+												value={data.filters.minBuildYear ?? ''}
+												placeholder="npr. 2000"
+												class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+											/>
+										</div>
+									{/if}
+									{#if coreFilters.parking_spaces}
+										<div>
+											<label for="minParking" class="mb-1.5 block text-xs font-medium text-gray-700"
+												>Parkirna mjesta (min.)</label
+											>
+											<input
+												id="minParking"
+												name="minParking"
+												type="number"
+												min="0"
+												value={data.filters.minParking ?? ''}
+												placeholder="npr. 1"
+												class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+											/>
+										</div>
+									{/if}
 								</div>
-								<div>
-									<label for="minParking" class="mb-1.5 block text-xs font-medium text-gray-700"
-										>Parkirna mjesta (min.)</label
-									>
-									<input
-										id="minParking"
-										name="minParking"
-										type="number"
-										min="0"
-										value={data.filters.minParking ?? ''}
-										placeholder="npr. 1"
-										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-									/>
-								</div>
-							</div>
+							{/if}
 
-							{#each data.attributeFields as field (field.key)}
+							{#each attributeFields as field (field.key)}
+								{@const selectedValues = data.filters.attributes[field.key] ?? []}
 								<div>
-									<label for="attr-{field.key}" class="mb-1.5 block text-xs font-medium text-gray-700"
-										>{field.label}</label
-									>
 									{#if field.type === 'select' && field.options}
-										<select
-											id="attr-{field.key}"
-											name="a_{field.key}"
-											value={data.filters.attributes[field.key] ?? ''}
-											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+										<span class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</span>
+										<div
+											class="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3"
 										>
-											<option value="">Sve</option>
 											{#each field.options as option}
-												<option value={option}>{option}</option>
+												<label
+													class="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+												>
+													<input
+														type="checkbox"
+														name="a_{field.key}"
+														value={option}
+														checked={selectedValues.includes(option)}
+														class="rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+													/>
+													{option}
+												</label>
 											{/each}
-										</select>
+										</div>
+										<p class="mt-1 text-xs text-gray-500">Možete odabrati više vrijednosti</p>
 									{:else if field.type === 'boolean'}
+										<label
+											for="attr-{field.key}"
+											class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</label
+										>
 										<select
 											id="attr-{field.key}"
 											name="a_{field.key}"
-											value={data.filters.attributes[field.key] ?? ''}
+											value={selectedValues[0] ?? ''}
 											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
 										>
 											<option value="">Sve</option>
@@ -403,17 +442,34 @@
 											<option value="false">Ne</option>
 										</select>
 									{:else if field.type === 'number'}
+										<label
+											for="attr-{field.key}"
+											class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</label
+										>
 										<input
 											id="attr-{field.key}"
 											name="a_{field.key}"
 											type="number"
 											min={field.min}
 											max={field.max}
-											value={data.filters.attributes[field.key] ?? ''}
+											value={selectedValues[0] ?? ''}
 											placeholder={field.placeholder ?? `Min. ${field.label.toLowerCase()}`}
 											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
 										/>
 										<p class="mt-1 text-xs text-gray-500">Minimalna vrijednost</p>
+									{:else}
+										<label
+											for="attr-{field.key}"
+											class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</label
+										>
+										<input
+											id="attr-{field.key}"
+											name="a_{field.key}"
+											type="text"
+											value={selectedValues[0] ?? ''}
+											placeholder={field.placeholder}
+											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+										/>
 									{/if}
 								</div>
 							{/each}
@@ -430,11 +486,20 @@
 					</button>
 					<a
 						href="/pretraga"
+						onclick={() => (mobileFiltersOpen = false)}
 						class="rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
 					>
 						Poništi
 					</a>
 				</div>
+
+				<button
+					type="button"
+					class="mt-3 w-full rounded-lg border border-gray-300 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 md:hidden"
+					onclick={() => (mobileFiltersOpen = false)}
+				>
+					Zatvori filtere
+				</button>
 			</div>
 		</aside>
 

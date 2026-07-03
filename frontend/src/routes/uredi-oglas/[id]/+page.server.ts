@@ -5,7 +5,6 @@ import { isAdmin, isProfileComplete, requireAuth } from '$lib/auth';
 import { parseListingForm } from '$lib/properties/listingForm';
 import { resolveLocationFromCoords } from '$lib/properties/location';
 import {
-	ATTRIBUTE_FIELDS_BY_TYPE,
 	CORE_OPTIONAL_FIELDS,
 	LISTING_TYPE_LABELS,
 	PROPERTY_TYPE_CONFIG,
@@ -69,8 +68,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		})),
 		propertyTypeConfig: PROPERTY_TYPE_CONFIG,
 		listingTypeLabels: LISTING_TYPE_LABELS,
-		coreOptionalFields: CORE_OPTIONAL_FIELDS,
-		attributeFieldsByType: ATTRIBUTE_FIELDS_BY_TYPE
+		coreOptionalFields: CORE_OPTIONAL_FIELDS
 	};
 };
 

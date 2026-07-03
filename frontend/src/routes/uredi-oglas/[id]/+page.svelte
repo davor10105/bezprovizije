@@ -3,7 +3,7 @@
 	import LocationPicker from '$lib/LocationPicker.svelte';
 	import PropertyImageManager from '$lib/PropertyImageManager.svelte';
 	import type { ListingType, PropertyType, ApprovalStatus } from '$lib/types/property';
-	import type { AttributeField } from '$lib/properties/schema';
+	import { getAttributeFields, type AttributeField } from '$lib/properties/schema';
 	import type { SubmitFunction } from '@sveltejs/kit';
 
 	let { data, form } = $props();
@@ -24,7 +24,7 @@
 	let removedImageIds = $state<string[]>([]);
 
 	const coreFields = $derived(data.coreOptionalFields[propertyType]);
-	const attributeFields = $derived(data.attributeFieldsByType[propertyType]);
+	const attributeFields = $derived(getAttributeFields(propertyType, listingType));
 
 	const statusLabels: Record<ApprovalStatus, string> = {
 		pending: 'Na čekanju',

@@ -1,9 +1,9 @@
 import type { ListingType, PropertyType } from '$lib/types/property';
 import {
-	ATTRIBUTE_FIELDS_BY_TYPE,
 	CORE_OPTIONAL_FIELDS,
 	LISTING_TYPES,
-	PROPERTY_TYPES
+	PROPERTY_TYPES,
+	getAttributeFields
 } from '$lib/properties/schema';
 
 const MAX_IMAGES = 12;
@@ -97,7 +97,8 @@ export function parseListingForm(
 	}
 
 	const attributes: Record<string, string | number | boolean> = {};
-	const typeFields = property_type ? ATTRIBUTE_FIELDS_BY_TYPE[property_type] : [];
+	const validListingType = LISTING_TYPES.includes(listing_type) ? listing_type : undefined;
+	const typeFields = property_type ? getAttributeFields(property_type, validListingType) : [];
 
 	for (const field of typeFields) {
 		const raw = formData.get(`attr_${field.key}`);
