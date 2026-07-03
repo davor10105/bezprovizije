@@ -343,6 +343,36 @@ export async function fetchUserListings(
 	return (data as DbUserProperty[]).map(toUserListing);
 }
 
+export async function fetchFavoriteListings(
+	supabase: SupabaseClient,
+	userId: string
+): Promise<UserListing[]> {
+	const { data, error } = await supabase
+		.from('favorites')
+		.select(
+			`created_at,
+       property:properties!property_id (
+         id, title, address, price, approval_status, listing_type, property_type, created_at,
+         property_images (storage_path, sort_order)
+       )`
+		)
+		.eq('user_id', userId)
+		.order('created_at', { ascending: false });
+
+	if (error) {
+		console.error('fetchFavoriteListings failed:', error.message);
+		return [];
+	}
+
+	return (data ?? [])
+		.map((row) => {
+			const property = row.property as DbUserProperty | DbUserProperty[] | null;
+			const resolved = Array.isArray(property) ? property[0] : property;
+			return resolved ? toUserListing(resolved) : null;
+		})
+		.filter((listing): listing is UserListing => listing !== null);
+}
+
 function toAdminListing(property: DbAdminProperty): AdminListing {
 	const images = [...(property.property_images ?? [])].sort(
 		(a, b) => a.sort_order - b.sort_order

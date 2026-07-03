@@ -43,7 +43,7 @@
 				<a href="/" class="flex-shrink-0">
 					<img src={logo} alt="BezProvizije.hr" class="h-12 w-auto md:h-20" />
 				</a>
-				<nav class="hidden space-x-6 text-sm md:flex lg:text-base">
+				<nav class="hidden items-center space-x-6 text-sm md:flex lg:text-base">
 					<a
 						href="/"
 						class={page.url.pathname === '/'
@@ -76,12 +76,37 @@
 					>
 						Blog
 					</a>
+					{#if isLoggedIn && profile?.role === 'admin'}
+						<a
+							href="/admin/oglasi"
+							class={page.url.pathname.startsWith('/admin')
+								? 'font-bold text-yellow-500'
+								: 'text-gray-600 transition-colors hover:text-yellow-500'}
+						>
+							Administracija
+						</a>
+					{/if}
 					<a
 						href="/objavi-oglas"
-						class={page.url.pathname === '/objavi-oglas'
-							? 'font-extrabold text-yellow-500'
-							: 'font-bold text-gray-600 underline transition-colors hover:text-yellow-500'}
+						class="ml-2 inline-flex items-center gap-1.5 rounded-xl bg-yellow-500 px-4 py-2.5 font-bold text-white shadow-md transition hover:bg-yellow-600 {page
+							.url.pathname === '/objavi-oglas'
+							? 'ring-2 ring-yellow-300'
+							: ''}"
 					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 4v16m8-8H4"
+							/>
+						</svg>
 						Objavite oglas
 					</a>
 				</nav>
@@ -89,38 +114,24 @@
 				<div class="hidden items-center space-x-3 md:flex">
 					{#if isLoggedIn}
 						<a
+							href="/account"
+							class="font-medium text-gray-600 transition-colors hover:text-gray-900"
+						>
+							{profile?.full_name || 'Moj račun'}
+						</a>
+						<a
 							href="/kupi-bp"
 							class="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-bold text-yellow-800 transition-colors hover:bg-yellow-200"
 							title="Kupi BP tokene"
 						>
 							{profile?.bp_balance ?? 0} BP
 						</a>
-						<a
-							href="/account"
-							class="font-medium text-gray-600 transition-colors hover:text-gray-900"
-						>
-							{profile?.full_name || 'Moj račun'}
-						</a>
-						{#if profile?.role === 'admin'}
-							<a
-							href="/admin/oglasi"
-							class="font-medium text-yellow-600 transition-colors hover:text-yellow-500"
-						>
-							Admin
-							</a>
-						{/if}
 					{:else}
 						<a
 							href="/prijava?action=login"
 							class="font-medium text-gray-600 transition-colors hover:text-gray-900"
 						>
 							Prijava
-						</a>
-						<a
-							href="/prijava?action=register"
-							class="rounded-xl bg-linear-to-r from-gray-900 to-gray-600 px-5 py-2.5 font-semibold text-white shadow-md transition hover:bg-gray-800"
-						>
-							Registracija
 						</a>
 					{/if}
 				</div>
@@ -278,6 +289,31 @@
 							Blog
 						</a>
 
+						<a
+							href="/objavi-oglas"
+							onclick={closeMenu}
+							class="flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-500 px-4 py-3.5 text-lg font-bold text-white shadow-md transition hover:bg-yellow-600 {page
+								.url.pathname === '/objavi-oglas'
+								? 'ring-2 ring-yellow-300'
+								: ''}"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-6 w-6 shrink-0"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 4v16m8-8H4"
+								/>
+							</svg>
+							Objavite oglas
+						</a>
+
 						<hr class="my-2 border-gray-200" />
 
 						<div class="flex flex-col gap-3 pt-2">
@@ -310,18 +346,12 @@
 									</a>
 								{/if}
 							{:else}
-								<a
-									href="/prijava?action=login"
-									onclick={closeMenu}
-									class="flex w-full justify-center rounded-xl border-2 border-gray-200 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
-									>Prijava</a
-								>
-								<a
-									href="/prijava?action=register"
-									onclick={closeMenu}
-									class="flex w-full justify-center rounded-xl bg-linear-to-r from-gray-900 to-gray-600 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-gray-800"
-									>Registracija</a
-								>
+							<a
+								href="/prijava?action=login"
+								onclick={closeMenu}
+								class="flex w-full justify-center rounded-xl border-2 border-gray-200 py-3 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
+								>Prijava</a
+							>
 							{/if}
 						</div>
 					</div>

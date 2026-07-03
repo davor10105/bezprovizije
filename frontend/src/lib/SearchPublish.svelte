@@ -214,10 +214,10 @@
 				class="flex flex-1 flex-col items-center justify-between rounded-2xl bg-white/95 p-6 text-center shadow-xl backdrop-blur md:p-8"
 			>
 				<h2 class="mb-4 text-2xl font-bold text-gray-800 md:text-3xl">
-					Pridružite se stotinama drugih oglašivača
+					Prodajte ili iznajmite bez provizije
 				</h2>
 				<p class="mb-8 text-lg text-gray-600">
-					Oglasite svoju nekretninu brzo, jednostavno i bez provizije.
+					Objavite oglas u nekoliko minuta i stupite u kontakt s kupcima i najmoprimcima.
 				</p>
 
 				<div

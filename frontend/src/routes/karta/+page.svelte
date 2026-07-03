@@ -58,8 +58,15 @@
 	);
 
 	function formatMarkerPrice(price) {
+		const compact = (value: number, suffix: string) => {
+			const rounded = Math.round(value * 10) / 10;
+			return rounded.toLocaleString('hr-HR', { maximumFractionDigits: 1 }) + suffix;
+		};
+		if (price >= 1_000_000) {
+			return compact(price / 1_000_000, 'M €');
+		}
 		if (price >= 1000) {
-			return (price / 1000).toFixed(0) + 'k €';
+			return compact(price / 1000, 'k €');
 		}
 		return price + ' €';
 	}

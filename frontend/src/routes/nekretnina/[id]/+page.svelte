@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
+	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data } = $props();
 
@@ -8,9 +10,13 @@
 	const ownerInfo = $derived({
 		fullName: data.owner?.full_name ?? 'Oglašivač',
 		phone: data.owner?.phone ?? '',
+		email: data.owner?.email ?? '',
 		publishedDate: new Date(property.created_at).toLocaleDateString('hr-HR'),
 		adCode: property.id.slice(0, 8).toUpperCase()
 	});
+
+	let contactRevealed = $state(false);
+	let favLoading = $state(false);
 
 	const published = page.url.searchParams.get('published') === '1';
 	const pending = page.url.searchParams.get('pending') === '1';
@@ -190,6 +196,59 @@
 			>
 			{property.address}
 		</p>
+
+		<div class="mt-5 flex justify-center md:justify-start">
+			{#if data.isLoggedIn}
+				<form
+					method="post"
+					action={data.isFavorited ? '?/unfavorite' : '?/favorite'}
+					use:enhance={() => {
+						favLoading = true;
+						return async ({ update }) => {
+							await update({ reset: false });
+							await invalidateAll();
+							favLoading = false;
+						};
+					}}
+				>
+					<button
+						type="submit"
+						disabled={favLoading}
+						class="inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-bold transition disabled:opacity-60 {data.isFavorited
+							? 'border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
+							: 'border-gray-200 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700'}"
+					>
+						<svg
+							class="h-5 w-5 {data.isFavorited ? 'fill-yellow-500 text-yellow-500' : 'fill-none'}"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+							/>
+						</svg>
+						{data.isFavorited ? 'Spremljeno u favorite' : 'Spremi u favorite'}
+					</button>
+				</form>
+			{:else}
+				<a
+					href="/prijava?action=login"
+					class="inline-flex items-center gap-2 rounded-full border-2 border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:border-yellow-300 hover:text-yellow-700"
+				>
+					<svg class="h-5 w-5 fill-none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+						/>
+					</svg>
+					Spremi u favorite
+				</a>
+			{/if}
+		</div>
 	</div>
 
 	<!-- DIREKTNO UGRAĐEN CAROUSEL -->
@@ -312,7 +371,7 @@
 			<h2 class="mb-8 text-2xl font-extrabold text-gray-900">Informacije o oglašivaču</h2>
 
 			<!-- Avatar i ime -->
-			<div class="mb-8 flex items-center gap-5">
+			<div class="mb-6 flex items-center gap-5">
 				<div
 					class="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 text-2xl font-bold text-yellow-600 shadow-sm"
 				>
@@ -324,44 +383,81 @@
 				</div>
 				<div>
 					<p class="text-xl font-bold text-gray-900">{ownerInfo.fullName}</p>
+					<p class="mt-0.5 text-sm text-gray-500">Objavljeno {ownerInfo.publishedDate}</p>
 				</div>
 			</div>
 
 			<!-- Kontakt podaci -->
-			<div class="mb-8 space-y-4">
-				{#if ownerInfo.phone}
-					<div class="flex items-center gap-4 text-gray-600">
-						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
-							<svg
-								class="h-5 w-5 text-yellow-500"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								><path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-								/></svg
-							>
-						</div>
-						<a
-							href="tel:{ownerInfo.phone}"
-							class="text-lg font-medium transition-colors hover:text-yellow-600"
-							>{ownerInfo.phone}</a
-						>
+			<div class="mb-8">
+				{#if contactRevealed}
+					<div class="space-y-4">
+						{#if ownerInfo.phone}
+							<div class="flex items-center gap-4 text-gray-600">
+								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-50">
+									<svg
+										class="h-5 w-5 text-yellow-500"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										><path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+										/></svg
+									>
+								</div>
+								<a
+									href="tel:{ownerInfo.phone}"
+									class="text-lg font-medium transition-colors hover:text-yellow-600"
+									>{ownerInfo.phone}</a
+								>
+							</div>
+						{/if}
+						{#if ownerInfo.email}
+							<div class="flex items-center gap-4 text-gray-600">
+								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-50">
+									<svg
+										class="h-5 w-5 text-yellow-500"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										><path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+										/></svg
+									>
+								</div>
+								<a
+									href="mailto:{ownerInfo.email}"
+									class="text-lg font-medium break-all transition-colors hover:text-yellow-600"
+									>{ownerInfo.email}</a
+								>
+							</div>
+						{/if}
+						{#if !ownerInfo.phone && !ownerInfo.email}
+							<p class="text-sm text-gray-500">Kontakt podaci nisu dostupni.</p>
+						{/if}
 					</div>
+				{:else}
+					<button
+						type="button"
+						onclick={() => (contactRevealed = true)}
+						class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3.5 text-base font-bold text-white shadow-md transition hover:bg-yellow-600"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+							/>
+						</svg>
+						Kontakt informacije
+					</button>
 				{/if}
-			</div>
-
-			<!-- Podaci o oglasu -->
-			<div
-				class="mt-auto rounded-2xl border border-gray-100 bg-gray-50 p-6 text-sm font-medium text-gray-500"
-			>
-				<div class="mb-3 flex justify-between border-b border-gray-200 pb-3">
-					<span>Objavljeno:</span>
-					<span class="font-bold text-gray-900">{ownerInfo.publishedDate}</span>
-				</div>
 			</div>
 		</div>
 	</div>

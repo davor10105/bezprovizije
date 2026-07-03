@@ -1,8 +1,8 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 import { PROPERTY_TYPE_SEARCH_LABELS } from '$lib/properties/schema';
-import { getProfile, getSafeUser, isAdmin } from '$lib/auth';
+import { getProfile, getSafeUser, isAdmin, requireAuth } from '$lib/auth';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
 	const { data: property, error: loadError } = await supabase
@@ -32,6 +32,17 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		.order('sort_order');
 
 	const owner = await getProfile(supabase, property.owner_id);
+
+	let isFavorited = false;
+	if (userId) {
+		const { data: favorite } = await supabase
+			.from('favorites')
+			.select('property_id')
+			.eq('user_id', userId)
+			.eq('property_id', params.id)
+			.maybeSingle();
+		isFavorited = !!favorite;
+	}
 
 	const imageUrls = (images ?? []).map(
 		(img) =>
@@ -66,10 +77,47 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		owner: owner
 			? {
 					full_name: owner.full_name,
-					phone: owner.phone
+					phone: owner.phone,
+					email: owner.email
 				}
 			: null,
 		isOwner,
-		isAdmin: viewerIsAdmin
+		isAdmin: viewerIsAdmin,
+		isLoggedIn: !!userId,
+		isFavorited
 	};
+};
+
+export const actions: Actions = {
+	favorite: async ({ params, locals: { supabase } }) => {
+		const { user } = await requireAuth(supabase);
+
+		const { error: insertError } = await supabase
+			.from('favorites')
+			.insert({ user_id: user.id, property_id: params.id });
+
+		if (insertError && insertError.code !== '23505') {
+			console.error('favorite failed:', insertError.message);
+			return fail(500, { message: 'Spremanje u favorite nije uspjelo.' });
+		}
+
+		return { favorited: true };
+	},
+
+	unfavorite: async ({ params, locals: { supabase } }) => {
+		const { user } = await requireAuth(supabase);
+
+		const { error: deleteError } = await supabase
+			.from('favorites')
+			.delete()
+			.eq('user_id', user.id)
+			.eq('property_id', params.id);
+
+		if (deleteError) {
+			console.error('unfavorite failed:', deleteError.message);
+			return fail(500, { message: 'Uklanjanje iz favorita nije uspjelo.' });
+		}
+
+		return { favorited: false };
+	}
 };

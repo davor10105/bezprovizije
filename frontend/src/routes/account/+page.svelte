@@ -4,7 +4,7 @@
 	import type { ApprovalStatus } from '$lib/types/property';
 	import type { SubmitFunction } from '@sveltejs/kit';
 
-	type AccountTab = 'listings' | 'account';
+	type AccountTab = 'listings' | 'favorites' | 'account';
 
 	let { data, form } = $props();
 
@@ -12,6 +12,7 @@
 
 	let loading = $state(false);
 	let deletingId = $state<string | null>(null);
+	let removingFavoriteId = $state<string | null>(null);
 	let activeTab = $state<AccountTab>(data.defaultTab as AccountTab);
 
 	const statusLabels: Record<ApprovalStatus, string> = {
@@ -54,6 +55,18 @@
 			loading = false;
 			deletingId = null;
 			await update();
+			if (result.type === 'success') {
+				await invalidateAll();
+			}
+		};
+	};
+
+	const handleRemoveFavorite: SubmitFunction = () => {
+		loading = true;
+		return async ({ result, update }) => {
+			loading = false;
+			removingFavoriteId = null;
+			await update({ reset: false });
 			if (result.type === 'success') {
 				await invalidateAll();
 			}
@@ -115,6 +128,20 @@
 			{#if data.listings.length > 0}
 				<span class="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-600">
 					{data.listings.length}
+				</span>
+			{/if}
+		</button>
+		<button
+			type="button"
+			class="border-b-2 px-4 py-2 text-sm font-semibold transition {activeTab === 'favorites'
+				? 'border-yellow-500 text-yellow-700'
+				: 'border-transparent text-gray-600 hover:text-gray-900'}"
+			onclick={() => (activeTab = 'favorites')}
+		>
+			Favoriti
+			{#if data.favorites.length > 0}
+				<span class="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-600">
+					{data.favorites.length}
 				</span>
 			{/if}
 		</button>
@@ -255,6 +282,96 @@
 						{/each}
 					</ul>
 				{/if}
+			{/if}
+		</section>
+	{:else if activeTab === 'favorites'}
+		<section class="mt-8">
+			{#if form?.removedFavorite}
+				<div class="mb-6 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800" role="status">
+					Oglas je uklonjen iz favorita.
+				</div>
+			{/if}
+
+			{#if data.favorites.length === 0}
+				<div
+					class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-6 py-10 text-center"
+				>
+					<p class="text-sm text-gray-600">Još nemate spremljenih oglasa.</p>
+					<a
+						href="/pretraga"
+						class="mt-4 inline-block text-sm font-semibold text-yellow-600 hover:text-yellow-700"
+					>
+						Pretražite nekretnine
+					</a>
+				</div>
+			{:else}
+				<ul class="space-y-4">
+					{#each data.favorites as listing (listing.id)}
+						<li
+							class="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center"
+						>
+							<a href="/nekretnina/{listing.id}" class="shrink-0">
+								<img
+									src={listing.image}
+									alt={listing.title}
+									class="h-28 w-full rounded-xl object-cover sm:h-24 sm:w-36"
+								/>
+							</a>
+							<div class="min-w-0 flex-1">
+								<a href="/nekretnina/{listing.id}">
+									<h3 class="font-semibold text-gray-900 hover:text-yellow-700">{listing.title}</h3>
+								</a>
+								<p class="mt-1 text-sm text-gray-500 line-clamp-1">{listing.address}</p>
+								<p class="mt-1 text-sm font-semibold text-gray-800">
+									{formatPrice(listing.price, listing.listing_type)}
+									<span class="font-normal text-gray-500">
+										· {data.propertyTypeConfig[listing.property_type].label}
+									</span>
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2 sm:flex-col">
+								<a
+									href="/nekretnina/{listing.id}"
+									class="rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+								>
+									Pregled
+								</a>
+								{#if removingFavoriteId === listing.id}
+									<form
+										method="post"
+										action="?/removeFavorite"
+										use:enhance={handleRemoveFavorite}
+										class="contents"
+									>
+										<input type="hidden" name="listingId" value={listing.id} />
+										<button
+											type="submit"
+											disabled={loading}
+											class="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+										>
+											Potvrdi
+										</button>
+										<button
+											type="button"
+											class="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+											onclick={() => (removingFavoriteId = null)}
+										>
+											Odustani
+										</button>
+									</form>
+								{:else}
+									<button
+										type="button"
+										class="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+										onclick={() => (removingFavoriteId = listing.id)}
+									>
+										Ukloni
+									</button>
+								{/if}
+							</div>
+						</li>
+					{/each}
+				</ul>
 			{/if}
 		</section>
 	{:else}

@@ -1,22 +1,26 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { isProfileComplete, isValidPhone, requireAuth, saveProfile, getSafeUser } from '$lib/auth';
-import { fetchUserListings } from '$lib/properties/queries';
+import { fetchFavoriteListings, fetchUserListings } from '$lib/properties/queries';
 import { LISTING_TYPE_LABELS, PROPERTY_TYPE_CONFIG } from '$lib/properties/schema';
 
 export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
 	const { user, profile } = await requireAuth(supabase);
 
-	const listings = isProfileComplete(profile) ? await fetchUserListings(supabase, user.id) : [];
-	const needsSetup = !isProfileComplete(profile);
+	const complete = isProfileComplete(profile);
+	const listings = complete ? await fetchUserListings(supabase, user.id) : [];
+	const favorites = complete ? await fetchFavoriteListings(supabase, user.id) : [];
+	const needsSetup = !complete;
 
 	const tabParam = url.searchParams.get('tab');
 	const defaultTab =
 		needsSetup || tabParam === 'racun' || url.searchParams.get('setup') === '1'
 			? 'account'
-			: tabParam === 'oglasi' || url.searchParams.get('deleted') === '1'
-				? 'listings'
-				: 'listings';
+			: tabParam === 'favoriti'
+				? 'favorites'
+				: tabParam === 'oglasi' || url.searchParams.get('deleted') === '1'
+					? 'listings'
+					: 'listings';
 
 	return {
 		email: user.email ?? '',
@@ -24,6 +28,7 @@ export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
 		needsSetup,
 		defaultTab,
 		listings,
+		favorites,
 		listingTypeLabels: LISTING_TYPE_LABELS,
 		propertyTypeConfig: PROPERTY_TYPE_CONFIG,
 		deleted: url.searchParams.get('deleted') === '1'
@@ -115,5 +120,28 @@ export const actions: Actions = {
 		}
 
 		return { deletedListing: true };
+	},
+
+	removeFavorite: async ({ request, locals: { supabase } }) => {
+		const { user } = await requireAuth(supabase);
+		const formData = await request.formData();
+		const listingId = (formData.get('listingId') as string)?.trim();
+
+		if (!listingId) {
+			return fail(400, { errors: { form: 'Oglas nije pronađen.' } });
+		}
+
+		const { error } = await supabase
+			.from('favorites')
+			.delete()
+			.eq('user_id', user.id)
+			.eq('property_id', listingId);
+
+		if (error) {
+			console.error('removeFavorite failed:', error.message);
+			return fail(500, { errors: { form: 'Uklanjanje iz favorita nije uspjelo.' } });
+		}
+
+		return { removedFavorite: true };
 	}
 };
