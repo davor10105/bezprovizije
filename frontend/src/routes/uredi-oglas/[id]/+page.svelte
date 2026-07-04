@@ -3,7 +3,8 @@
 	import LocationPicker from '$lib/LocationPicker.svelte';
 	import PropertyImageManager from '$lib/PropertyImageManager.svelte';
 	import type { ListingType, PropertyType, ApprovalStatus } from '$lib/types/property';
-	import { getAttributeFields, type AttributeField } from '$lib/properties/schema';
+	import AttributeFieldGroups from '$lib/properties/AttributeFieldGroups.svelte';
+	import { getAttributeFieldsGrouped, isPropertyTypeAllowedForListing } from '$lib/properties/schema';
 	import type { SubmitFunction } from '@sveltejs/kit';
 
 	let { data, form } = $props();
@@ -24,7 +25,25 @@
 	let removedImageIds = $state<string[]>([]);
 
 	const coreFields = $derived(data.coreOptionalFields[propertyType]);
-	const attributeFields = $derived(getAttributeFields(propertyType, listingType));
+	const attributeFieldGroups = $derived(getAttributeFieldsGrouped(propertyType, listingType));
+
+	const availableListingTypes = $derived(
+		propertyType === 'room'
+			? Object.entries(data.listingTypeLabels).filter(([value]) => value === 'rent')
+			: Object.entries(data.listingTypeLabels)
+	);
+
+	const availablePropertyTypes = $derived(
+		Object.entries(data.propertyTypeConfig).filter(([value]) =>
+			isPropertyTypeAllowedForListing(value as PropertyType, listingType)
+		)
+	);
+
+	$effect(() => {
+		if (propertyType === 'room' && listingType === 'sale') {
+			listingType = 'rent';
+		}
+	});
 
 	const statusLabels: Record<ApprovalStatus, string> = {
 		pending: 'Na čekanju',
@@ -103,7 +122,7 @@
 		<div>
 			<span class="block text-sm font-semibold text-gray-700">Vrsta transakcije</span>
 			<div class="mt-3 grid grid-cols-2 gap-3">
-				{#each Object.entries(data.listingTypeLabels) as [value, label]}
+				{#each availableListingTypes as [value, label]}
 					<label
 						class="flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-4 text-center text-sm font-semibold transition {listingType ===
 						value
@@ -129,7 +148,7 @@
 		<div>
 			<span class="block text-sm font-semibold text-gray-700">Vrsta nekretnine</span>
 			<div class="mt-3 grid gap-3 sm:grid-cols-2">
-				{#each Object.entries(data.propertyTypeConfig) as [value, config]}
+				{#each availablePropertyTypes as [value, config]}
 					<label
 						class="flex cursor-pointer gap-3 rounded-xl border-2 p-4 transition {propertyType ===
 						value
@@ -299,57 +318,16 @@
 			</div>
 		{/if}
 
-		{#if attributeFields.length > 0}
+		{#if attributeFieldGroups.length > 0}
 			<div class="rounded-xl border border-gray-100 bg-gray-50/80 p-4">
 				<h3 class="text-sm font-semibold text-gray-800">Dodatne značajke (opcionalno)</h3>
-				<div class="mt-3 grid gap-4 sm:grid-cols-2">
-					{#each attributeFields as field (field.key)}
-						{@const f = field as AttributeField}
-						{@const attrValue = data.property.attributes[f.key]}
-						<div class={f.type === 'boolean' ? 'flex items-center gap-2 sm:col-span-2' : ''}>
-							{#if f.type === 'boolean'}
-								<input
-									id={`attr_${f.key}`}
-									name={`attr_${f.key}`}
-									type="checkbox"
-									value="true"
-									checked={attrValue === true}
-									class="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
-								/>
-								<label for={`attr_${f.key}`} class="text-sm font-medium text-gray-700"
-									>{f.label}</label
-								>
-							{:else if f.type === 'select'}
-								<label for={`attr_${f.key}`} class="block text-sm font-medium text-gray-700"
-									>{f.label}</label
-								>
-								<select
-									id={`attr_${f.key}`}
-									name={`attr_${f.key}`}
-									class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
-								>
-									<option value="">— Odaberi —</option>
-									{#each f.options ?? [] as option}
-										<option value={option} selected={attrValue === option}>{option}</option>
-									{/each}
-								</select>
-							{:else}
-								<label for={`attr_${f.key}`} class="block text-sm font-medium text-gray-700"
-									>{f.label}</label
-								>
-								<input
-									id={`attr_${f.key}`}
-									name={`attr_${f.key}`}
-									type={f.type === 'number' ? 'number' : 'text'}
-									min={f.min}
-									max={f.max}
-									placeholder={f.placeholder}
-									value={attrValue ?? ''}
-									class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
-								/>
-							{/if}
-						</div>
-					{/each}
+				<div class="mt-3">
+					<AttributeFieldGroups
+						mode="form"
+						groups={attributeFieldGroups}
+						values={data.property.attributes}
+						errors={formErrors}
+					/>
 				</div>
 			</div>
 		{/if}

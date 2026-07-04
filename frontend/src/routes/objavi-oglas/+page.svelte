@@ -3,7 +3,8 @@
 	import ImageUploadPreview from '$lib/ImageUploadPreview.svelte';
 	import LocationPicker from '$lib/LocationPicker.svelte';
 	import type { ListingType, PropertyType } from '$lib/types/property';
-	import { getAttributeFields, type AttributeField } from '$lib/properties/schema';
+	import AttributeFieldGroups from '$lib/properties/AttributeFieldGroups.svelte';
+	import { getAttributeFieldsGrouped, isPropertyTypeAllowedForListing } from '$lib/properties/schema';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { isAdmin } from '$lib/auth';
 	import { listingBpCost } from '$lib/tokens/queries';
@@ -27,8 +28,8 @@
 	const coreFields = $derived(
 		propertyType ? data.coreOptionalFields[propertyType as PropertyType] : null
 	);
-	const attributeFields = $derived(
-		propertyType ? getAttributeFields(propertyType as PropertyType, listingType) : []
+	const attributeFieldGroups = $derived(
+		propertyType ? getAttributeFieldsGrouped(propertyType as PropertyType, listingType) : []
 	);
 
 	const saleBpCost = $derived(listingBpCost(data.tokenSettings, 'sale'));
@@ -42,6 +43,25 @@
 	const buyBpHref = $derived(
 		`/kupi-bp?redirect=${encodeURIComponent('/objavi-oglas')}&amount=${Math.max(selectedBpCost - currentBalance, 1)}`
 	);
+
+	function isListingTypeDisabled(value: string): boolean {
+		return propertyType === 'room' && value === 'sale';
+	}
+
+	const availablePropertyTypes = $derived(
+		Object.entries(data.propertyTypeConfig).filter(([value]) =>
+			isPropertyTypeAllowedForListing(value as PropertyType, listingType)
+		)
+	);
+
+	$effect(() => {
+		if (propertyType === 'room' && listingType === 'sale') {
+			listingType = 'rent';
+		}
+		if (listingType === 'sale' && propertyType === 'room') {
+			propertyType = '';
+		}
+	});
 
 	function validateStep1(): boolean {
 		const errors: Record<string, string> = {};
@@ -148,22 +168,34 @@
 					{#each Object.entries(data.listingTypeLabels) as [value, label]}
 						{@const cost = value === 'sale' ? saleBpCost : rentBpCost}
 						{@const selected = listingType === value}
+						{@const disabled = isListingTypeDisabled(value)}
 						<label
-							class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 px-4 py-6 text-center transition {selected
-								? 'border-yellow-500 bg-yellow-50 shadow-md'
-								: 'border-gray-200 hover:border-gray-300'}"
+							class="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 px-4 py-6 text-center transition {disabled
+								? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-50'
+								: selected
+									? 'cursor-pointer border-yellow-500 bg-yellow-50 shadow-md'
+									: 'cursor-pointer border-gray-200 hover:border-gray-300'}"
 						>
 							<input
 								type="radio"
 								name="listing_type"
 								value={value}
 								bind:group={listingType}
+								disabled={disabled}
 								class="sr-only"
 							/>
-							<span class="text-lg font-bold {selected ? 'text-yellow-900' : 'text-gray-900'}">
+							<span
+								class="text-lg font-bold {disabled
+									? 'text-gray-400'
+									: selected
+										? 'text-yellow-900'
+										: 'text-gray-900'}"
+							>
 								{label}
 							</span>
-							{#if userIsAdmin}
+							{#if disabled}
+								<span class="text-xs text-gray-400">Nije dostupno za sobe</span>
+							{:else if userIsAdmin}
 								<span
 									class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold tracking-wide text-green-800 uppercase"
 								>
@@ -230,7 +262,7 @@
 			<div>
 				<span class="block text-sm font-semibold text-gray-700">Vrsta nekretnine</span>
 				<div class="mt-3 grid gap-3 sm:grid-cols-2">
-					{#each Object.entries(data.propertyTypeConfig) as [value, config]}
+					{#each availablePropertyTypes as [value, config]}
 						<label
 							class="flex cursor-pointer gap-3 rounded-xl border-2 p-4 transition {propertyType ===
 							value
@@ -406,54 +438,11 @@
 				</div>
 			{/if}
 
-			{#if attributeFields.length > 0}
+			{#if attributeFieldGroups.length > 0}
 				<div class="rounded-xl border border-gray-100 bg-gray-50/80 p-4">
 					<h3 class="text-sm font-semibold text-gray-800">Dodatne značajke (opcionalno)</h3>
-					<div class="mt-3 grid gap-4 sm:grid-cols-2">
-						{#each attributeFields as field (field.key)}
-							{@const f = field as AttributeField}
-							<div class={f.type === 'boolean' ? 'flex items-center gap-2 sm:col-span-2' : ''}>
-								{#if f.type === 'boolean'}
-									<input
-										id={`attr_${f.key}`}
-										name={`attr_${f.key}`}
-										type="checkbox"
-										value="true"
-										class="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
-									/>
-									<label for={`attr_${f.key}`} class="text-sm font-medium text-gray-700"
-										>{f.label}</label
-									>
-								{:else if f.type === 'select'}
-									<label for={`attr_${f.key}`} class="block text-sm font-medium text-gray-700"
-										>{f.label}</label
-									>
-									<select
-										id={`attr_${f.key}`}
-										name={`attr_${f.key}`}
-										class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
-									>
-										<option value="">— Odaberi —</option>
-										{#each f.options ?? [] as option}
-											<option value={option}>{option}</option>
-										{/each}
-									</select>
-								{:else}
-									<label for={`attr_${f.key}`} class="block text-sm font-medium text-gray-700"
-										>{f.label}</label
-									>
-									<input
-										id={`attr_${f.key}`}
-										name={`attr_${f.key}`}
-										type={f.type === 'number' ? 'number' : 'text'}
-										min={f.min}
-										max={f.max}
-										placeholder={f.placeholder}
-										class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
-									/>
-								{/if}
-							</div>
-						{/each}
+					<div class="mt-3">
+						<AttributeFieldGroups mode="form" groups={attributeFieldGroups} errors={formErrors} />
 					</div>
 				</div>
 			{/if}

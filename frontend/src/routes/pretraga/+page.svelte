@@ -4,7 +4,8 @@
 		formDataToSearchParams,
 		searchHref
 	} from '$lib/properties/search';
-	import { CORE_OPTIONAL_FIELDS, getSearchableAttributeFields } from '$lib/properties/schema';
+	import AttributeFieldGroups from '$lib/properties/AttributeFieldGroups.svelte';
+	import { CORE_OPTIONAL_FIELDS, getSearchableAttributeFieldsGrouped, isPropertyTypeAllowedForListing } from '$lib/properties/schema';
 
 	let { data } = $props();
 
@@ -19,14 +20,29 @@
 
 	// Additional filters follow the shared schema and update live as the user
 	// changes the property type and/or sale-vs-rent selection.
-	const attributeFields = $derived(
-		getSearchableAttributeFields(selectedPropertyType, selectedListingType)
+	const attributeFieldGroups = $derived(
+		getSearchableAttributeFieldsGrouped(selectedPropertyType, selectedListingType)
 	);
 	const coreFilters = $derived(
 		selectedPropertyType
 			? CORE_OPTIONAL_FIELDS[selectedPropertyType]
 			: { rooms: true, bathrooms: true, build_year: true, parking_spaces: true }
 	);
+
+	const availablePropertyTypes = $derived(
+		data.propertyTypes.filter((propertyType) =>
+			isPropertyTypeAllowedForListing(propertyType.value as PropertyType, selectedListingType)
+		)
+	);
+
+	$effect(() => {
+		if (
+			selectedPropertyType === 'room' &&
+			selectedListingType === 'sale'
+		) {
+			selectedPropertyType = '';
+		}
+	});
 
 	const counties = $derived(Object.keys(data.locationHierarchy));
 	const cities = $derived(
@@ -148,7 +164,7 @@
 						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
 					>
 						<option value="">Sve vrste</option>
-						{#each data.propertyTypes as propertyType}
+						{#each availablePropertyTypes as propertyType}
 							<option value={propertyType.value}>{propertyType.label}</option>
 						{/each}
 					</select>
@@ -402,77 +418,18 @@
 								</div>
 							{/if}
 
-							{#each attributeFields as field (field.key)}
-								{@const selectedValues = data.filters.attributes[field.key] ?? []}
-								<div>
-									{#if field.type === 'select' && field.options}
-										<span class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</span>
-										<div
-											class="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3"
-										>
-											{#each field.options as option}
-												<label
-													class="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
-												>
-													<input
-														type="checkbox"
-														name="a_{field.key}"
-														value={option}
-														checked={selectedValues.includes(option)}
-														class="rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
-													/>
-													{option}
-												</label>
-											{/each}
-										</div>
-										<p class="mt-1 text-xs text-gray-500">Možete odabrati više vrijednosti</p>
-									{:else if field.type === 'boolean'}
-										<label
-											for="attr-{field.key}"
-											class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</label
-										>
-										<select
-											id="attr-{field.key}"
-											name="a_{field.key}"
-											value={selectedValues[0] ?? ''}
-											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-										>
-											<option value="">Sve</option>
-											<option value="true">Da</option>
-											<option value="false">Ne</option>
-										</select>
-									{:else if field.type === 'number'}
-										<label
-											for="attr-{field.key}"
-											class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</label
-										>
-										<input
-											id="attr-{field.key}"
-											name="a_{field.key}"
-											type="number"
-											min={field.min}
-											max={field.max}
-											value={selectedValues[0] ?? ''}
-											placeholder={field.placeholder ?? `Min. ${field.label.toLowerCase()}`}
-											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-										/>
-										<p class="mt-1 text-xs text-gray-500">Minimalna vrijednost</p>
-									{:else}
-										<label
-											for="attr-{field.key}"
-											class="mb-1.5 block text-xs font-medium text-gray-700">{field.label}</label
-										>
-										<input
-											id="attr-{field.key}"
-											name="a_{field.key}"
-											type="text"
-											value={selectedValues[0] ?? ''}
-											placeholder={field.placeholder}
-											class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-										/>
-									{/if}
-								</div>
-							{/each}
+							{#if selectedPropertyType}
+								<AttributeFieldGroups
+									mode="search"
+									groups={attributeFieldGroups}
+									filterAttributes={data.filters.attributes}
+								/>
+							{:else}
+								<p class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+									Odaberite vrstu nekretnine iznad kako biste vidjeli dodatne filtere po
+									kategorijama.
+								</p>
+							{/if}
 						</div>
 					</div>
 				</div>

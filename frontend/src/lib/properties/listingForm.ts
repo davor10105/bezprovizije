@@ -3,7 +3,8 @@ import {
 	CORE_OPTIONAL_FIELDS,
 	LISTING_TYPES,
 	PROPERTY_TYPES,
-	getAttributeFields
+	getAttributeFields,
+	isPropertyTypeAllowedForListing
 } from '$lib/properties/schema';
 
 const MAX_IMAGES = 12;
@@ -44,6 +45,13 @@ export function parseListingForm(
 	}
 	if (!LISTING_TYPES.includes(listing_type)) {
 		errors.listing_type = 'Odaberite prodaju ili najam.';
+	}
+	if (
+		PROPERTY_TYPES.includes(property_type) &&
+		LISTING_TYPES.includes(listing_type) &&
+		!isPropertyTypeAllowedForListing(property_type, listing_type)
+	) {
+		errors.listing_type = 'Sobe su dostupne samo za najam.';
 	}
 
 	const address = (formData.get('address') as string)?.trim();
@@ -102,6 +110,10 @@ export function parseListingForm(
 
 	for (const field of typeFields) {
 		const raw = formData.get(`attr_${field.key}`);
+		if (field.required && (raw === null || raw === '')) {
+			errors[`attr_${field.key}`] = `Odaberite ${field.label.toLowerCase()}.`;
+			continue;
+		}
 		if (raw === null || raw === '') continue;
 
 		if (field.type === 'boolean') {

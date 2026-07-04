@@ -25,7 +25,7 @@
 			id: 3,
 			title: 'Zemljišta',
 			img: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80',
-			propertyType: null
+			propertyType: 'land'
 		},
 		{
 			id: 4,
@@ -84,7 +84,8 @@
 		goto(
 			searchHref({
 				...DEFAULT_SEARCH_FILTERS,
-				propertyType: propertyType ?? ''
+				propertyType: propertyType ?? '',
+				listingType: propertyType === 'room' ? 'rent' : ''
 			})
 		);
 	}

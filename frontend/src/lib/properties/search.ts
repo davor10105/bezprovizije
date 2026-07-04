@@ -1,5 +1,5 @@
 import type { ListingType, PropertyType } from '$lib/types/property';
-import { LISTING_TYPES, PROPERTY_TYPES } from '$lib/properties/schema';
+import { LISTING_TYPES, PROPERTY_TYPES, isPropertyTypeAllowedForListing } from '$lib/properties/schema';
 import { parsePageParam } from '$lib/pagination';
 
 export type SearchSort = 'newest' | 'oldest' | 'price_asc' | 'price_desc';
@@ -87,7 +87,7 @@ export function parseSearchParams(params: URLSearchParams): SearchFilters {
 		if (values.length > 0) attributes[attrKey] = values;
 	}
 
-	return {
+	const filters: SearchFilters = {
 		listingType: parseListingType(params.get('listing')),
 		propertyType: parsePropertyType(params.get('type')),
 		minPrice: parseOptionalNumber(params.get('minPrice')),
@@ -105,6 +105,16 @@ export function parseSearchParams(params: URLSearchParams): SearchFilters {
 		minParking: parseOptionalNumber(params.get('minParking')),
 		attributes
 	};
+
+	if (
+		filters.propertyType &&
+		filters.listingType &&
+		!isPropertyTypeAllowedForListing(filters.propertyType, filters.listingType)
+	) {
+		filters.propertyType = '';
+	}
+
+	return filters;
 }
 
 export function searchParamsFromFilters(filters: SearchFilters, options?: { page?: number }): URLSearchParams {

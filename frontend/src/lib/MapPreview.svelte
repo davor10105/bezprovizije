@@ -30,7 +30,8 @@
 		Stan: 'bg-blue-600',
 		Garaža: 'bg-gray-700',
 		Poslovni: 'bg-purple-600',
-		Soba: 'bg-indigo-600'
+		Soba: 'bg-indigo-600',
+		Zemljište: 'bg-lime-600'
 	};
 
 	onMount(async () => {

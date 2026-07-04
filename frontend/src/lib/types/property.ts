@@ -2,7 +2,7 @@ export type ListingType = 'sale' | 'rent';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
-export type PropertyType = 'apartment' | 'house' | 'business' | 'garage' | 'room';
+export type PropertyType = 'apartment' | 'house' | 'business' | 'garage' | 'room' | 'land';
 
 export type Property = {
 	id: string;

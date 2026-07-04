@@ -4,6 +4,7 @@
 	import type { ListingCard } from '$lib/properties/queries';
 	import type { LocationHierarchy } from '$lib/properties/location';
 	import type { ListingType, PropertyType } from '$lib/types/property';
+	import { isPropertyTypeAllowedForListing } from '$lib/properties/schema';
 
 	let {
 		listings = [],
@@ -27,6 +28,21 @@
 	const availableNeighborhoods = $derived(
 		selectedCounty && selectedCity ? (locationHierarchy[selectedCounty]?.[selectedCity] ?? []) : []
 	);
+
+	const availablePropertyTypes = $derived(
+		propertyTypes.filter((option) =>
+			isPropertyTypeAllowedForListing(option.value as PropertyType, listingType)
+		)
+	);
+
+	$effect(() => {
+		if (propertyType === 'room' && listingType === 'sale') {
+			listingType = 'rent';
+		}
+		if (listingType === 'sale' && propertyType === 'room') {
+			propertyType = '';
+		}
+	});
 
 	function onCountyChange() {
 		selectedCity = '';
@@ -84,7 +100,7 @@
 							class="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 outline-none focus:border-yellow-500 focus:ring-yellow-500"
 						>
 							<option value="">Sve vrste</option>
-							{#each propertyTypes as option}
+							{#each availablePropertyTypes as option}
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</select>
