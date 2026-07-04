@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { requireAuth } from '$lib/auth';
+import { isManualBankPaymentConfigured } from '$lib/server/bankPayment';
 import { fetchTokenSettings, formatBpPrice } from '$lib/tokens/queries';
 import { getStripe } from '$lib/server/stripe';
 
@@ -51,6 +52,7 @@ export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
 		bpPriceLabel: formatBpPrice(settings.bp_price_cents),
 		redirectTo,
 		suggestedAmount,
-		checkoutMessage
+		checkoutMessage,
+		manualBankPaymentEnabled: isManualBankPaymentConfigured()
 	};
 };

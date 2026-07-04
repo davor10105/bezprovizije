@@ -6,7 +6,7 @@ export type TokenSettings = {
 	updated_at: string;
 };
 
-export type BpPaymentMethod = 'card' | 'bank_transfer' | 'sepa_debit';
+export type BpPaymentMethod = 'card' | 'bank_transfer' | 'sepa_debit' | 'manual_bank';
 
 export type BpPurchaseStatus = 'pending' | 'completed' | 'failed' | 'expired';
 
