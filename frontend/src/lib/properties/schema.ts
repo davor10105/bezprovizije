@@ -32,14 +32,14 @@ export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
 
 export const PROPERTY_TYPE_CONFIG: Record<
 	PropertyType,
-	{ label: string; description: string; icon: string; listingTypesOnly?: ListingType[] }
+	{ label: string; description: string; listingTypesOnly?: ListingType[] }
 > = {
-	apartment: { label: 'Stan', description: 'Stanovi i apartmani', icon: '🏢' },
-	house: { label: 'Kuća', description: 'Obiteljske kuće i vile', icon: '🏠' },
-	business: { label: 'Poslovni prostor', description: 'Uredi, trgovine, hale', icon: '🏪' },
-	garage: { label: 'Garaža', description: 'Garažna i parkirna mjesta', icon: '🅿️' },
-	room: { label: 'Soba', description: 'Sobe za najam', icon: '🛏️', listingTypesOnly: ['rent'] },
-	land: { label: 'Zemljište', description: 'Poljoprivredna i građevinska čestica', icon: '🌿' }
+	apartment: { label: 'Stan', description: 'Stanovi i apartmani' },
+	house: { label: 'Kuća', description: 'Obiteljske kuće i vile' },
+	business: { label: 'Poslovni prostor', description: 'Uredi, trgovine, hale' },
+	garage: { label: 'Garaža', description: 'Garažna i parkirna mjesta' },
+	room: { label: 'Soba', description: 'Sobe za najam', listingTypesOnly: ['rent'] },
+	land: { label: 'Zemljište', description: 'Poljoprivredna i građevinska čestica' }
 };
 
 /** Croatian display labels stored in DB enum maps to legacy search filter labels */

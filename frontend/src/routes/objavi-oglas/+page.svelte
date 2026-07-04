@@ -4,10 +4,14 @@
 	import LocationPicker from '$lib/LocationPicker.svelte';
 	import type { ListingType, PropertyType } from '$lib/types/property';
 	import AttributeFieldGroups from '$lib/properties/AttributeFieldGroups.svelte';
+	import PropertyTypeIcon from '$lib/properties/PropertyTypeIcon.svelte';
 	import { getAttributeFieldsGrouped, isPropertyTypeAllowedForListing } from '$lib/properties/schema';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { isAdmin } from '$lib/auth';
 	import { listingBpCost } from '$lib/tokens/queries';
+
+	const STANDARD_SALE_BP = 70;
+	const STANDARD_RENT_BP = 30;
 
 	let { data, form } = $props();
 
@@ -46,6 +50,10 @@
 
 	function isListingTypeDisabled(value: string): boolean {
 		return propertyType === 'room' && value === 'sale';
+	}
+
+	function standardBpCost(value: string): number {
+		return value === 'sale' ? STANDARD_SALE_BP : STANDARD_RENT_BP;
 	}
 
 	const availablePropertyTypes = $derived(
@@ -167,6 +175,7 @@
 				<div class="mt-3 grid grid-cols-2 gap-4">
 					{#each Object.entries(data.listingTypeLabels) as [value, label]}
 						{@const cost = value === 'sale' ? saleBpCost : rentBpCost}
+						{@const standardCost = standardBpCost(value)}
 						{@const selected = listingType === value}
 						{@const disabled = isListingTypeDisabled(value)}
 						<label
@@ -202,12 +211,35 @@
 									Besplatno
 								</span>
 							{:else}
-								<span
-									class="flex items-baseline gap-1 rounded-full bg-white px-4 py-1.5 shadow-sm ring-1 ring-yellow-200"
-								>
-									<span class="text-2xl font-extrabold text-gray-900">{cost}</span>
-									<span class="text-sm font-bold text-yellow-700">BP</span>
-								</span>
+								<div class="flex flex-col items-center gap-1.5">
+									<span class="flex items-baseline gap-1 text-gray-500">
+										<span
+											class="text-xl font-extrabold line-through decoration-yellow-500 decoration-4 underline-offset-2"
+											>{standardCost}</span
+										>
+										<span
+											class="text-sm font-bold line-through decoration-yellow-500 decoration-4 underline-offset-2"
+											>BP</span
+										>
+									</span>
+									<span class="text-sm font-bold tracking-wide text-yellow-600 uppercase"
+										>Promotivna cijena:</span
+									>
+									{#if cost === 0}
+										<span
+											class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold tracking-wide text-green-800 uppercase"
+										>
+											Besplatno
+										</span>
+									{:else}
+										<span
+											class="flex items-baseline gap-1 rounded-full bg-white px-4 py-1.5 shadow-sm ring-1 ring-yellow-200"
+										>
+											<span class="text-2xl font-extrabold text-gray-900">{cost}</span>
+											<span class="text-sm font-bold text-yellow-700">BP</span>
+										</span>
+									{/if}
+								</div>
 							{/if}
 						</label>
 					{/each}
@@ -276,7 +308,12 @@
 								bind:group={propertyType}
 								class="sr-only"
 							/>
-							<span class="text-2xl">{config.icon}</span>
+							<PropertyTypeIcon
+								type={value as PropertyType}
+								class="h-9 w-9 {propertyType === value
+									? 'text-yellow-600'
+									: 'text-yellow-500/70'}"
+							/>
 							<span>
 								<span class="block font-semibold text-gray-900">{config.label}</span>
 								<span class="block text-xs text-gray-500">{config.description}</span>

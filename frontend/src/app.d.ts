@@ -8,6 +8,11 @@ declare module '$env/static/private' {
 	export const SUPABASE_SERVICE_ROLE_KEY: string;
 }
 
+declare module '*.svg?raw' {
+	const content: string;
+	export default content;
+}
+
 declare global {
   namespace App {
     // interface Error {}

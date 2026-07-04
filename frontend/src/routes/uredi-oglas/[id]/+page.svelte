@@ -4,6 +4,7 @@
 	import PropertyImageManager from '$lib/PropertyImageManager.svelte';
 	import type { ListingType, PropertyType, ApprovalStatus } from '$lib/types/property';
 	import AttributeFieldGroups from '$lib/properties/AttributeFieldGroups.svelte';
+	import PropertyTypeIcon from '$lib/properties/PropertyTypeIcon.svelte';
 	import { getAttributeFieldsGrouped, isPropertyTypeAllowedForListing } from '$lib/properties/schema';
 	import type { SubmitFunction } from '@sveltejs/kit';
 
@@ -162,7 +163,10 @@
 							bind:group={propertyType}
 							class="sr-only"
 						/>
-						<span class="text-2xl">{config.icon}</span>
+						<PropertyTypeIcon
+							type={value as PropertyType}
+							class="h-9 w-9 {propertyType === value ? 'text-yellow-600' : 'text-yellow-500/70'}"
+						/>
 						<span>
 							<span class="block font-semibold text-gray-900">{config.label}</span>
 							<span class="block text-xs text-gray-500">{config.description}</span>
