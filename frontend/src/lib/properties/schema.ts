@@ -551,13 +551,6 @@ const APARTMENT_FIELDS: AttributeField[] = [
 		category: 'basic_features'
 	},
 	{
-		key: 'no_agency_fee',
-		label: 'Bez agencijske provizije',
-		type: 'boolean',
-		searchable: true,
-		category: 'basic_features'
-	},
-	{
 		key: 'pets_allowed',
 		label: 'Ljubimci dozvoljeni',
 		type: 'boolean',
