@@ -1,10 +1,20 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import OrderedImageCard from '$lib/OrderedImageCard.svelte';
+	import {
+		existingImageOrderToken,
+		IMAGE_ORDER_NEW,
+		moveArrayItem
+	} from '$lib/properties/imageOrder';
 
 	export type ExistingImage = {
 		id: string;
 		url: string;
 	};
+
+	type OrderItem =
+		| { kind: 'existing'; id: string; url: string }
+		| { kind: 'new'; id: string; url: string; file: File };
 
 	interface Props {
 		files?: File[];
@@ -23,45 +33,42 @@
 	}: Props = $props();
 
 	let fileInput: HTMLInputElement;
-	let previews = $state<{ id: string; url: string; file: File }[]>([]);
-	let dragOver = $state(false);
-
-	const visibleExisting = $derived(
-		existingImages.filter((img) => !removedImageIds.includes(img.id))
+	let orderedItems = $state<OrderItem[]>(
+		existingImages.map((image) => ({
+			kind: 'existing' as const,
+			id: image.id,
+			url: image.url
+		}))
 	);
+	let dragOverZone = $state(false);
+	let dragIndex = $state<number | null>(null);
+	let dropIndex = $state<number | null>(null);
 
-	const totalCount = $derived(visibleExisting.length + files.length);
+	const totalCount = $derived(orderedItems.length);
 
-	function updatePreviews(newFiles: File[]) {
-		const previous = previews;
-		const next = newFiles.map((file) => {
-			const existing = previous.find((preview) => preview.file === file);
-			if (existing) return existing;
-			return {
-				id: crypto.randomUUID(),
-				url: URL.createObjectURL(file),
-				file
-			};
-		});
-
-		for (const preview of previous) {
-			if (!next.includes(preview)) {
-				URL.revokeObjectURL(preview.url);
-			}
-		}
-
-		previews = next;
+	function syncFilesFromOrder() {
+		files = orderedItems.filter((item) => item.kind === 'new').map((item) => item.file);
 	}
 
-	function setFiles(newFiles: File[]) {
-		files = newFiles;
-		updatePreviews(newFiles);
+	function moveItem(fromIndex: number, toIndex: number) {
+		orderedItems = moveArrayItem(orderedItems, fromIndex, toIndex);
+		syncFilesFromOrder();
 	}
 
 	function addFiles(incoming: FileList | File[]) {
 		const accepted = Array.from(incoming).filter((file) => file.type.startsWith('image/'));
-		const remaining = maxImages - visibleExisting.length;
-		setFiles([...files, ...accepted].slice(0, remaining));
+		const remaining = maxImages - orderedItems.length;
+		if (remaining <= 0) return;
+
+		const newItems: OrderItem[] = accepted.slice(0, remaining).map((file) => ({
+			kind: 'new' as const,
+			id: crypto.randomUUID(),
+			url: URL.createObjectURL(file),
+			file
+		}));
+
+		orderedItems = [...orderedItems, ...newItems];
+		syncFilesFromOrder();
 	}
 
 	function onFileChange(event: Event) {
@@ -72,90 +79,128 @@
 		input.value = '';
 	}
 
-	function removeNewFile(index: number) {
-		setFiles(files.filter((_, i) => i !== index));
-	}
-
-	function removeExisting(id: string) {
-		if (!removedImageIds.includes(id)) {
-			removedImageIds = [...removedImageIds, id];
+	function removeAt(index: number) {
+		const item = orderedItems[index];
+		if (item.kind === 'existing') {
+			if (!removedImageIds.includes(item.id)) {
+				removedImageIds = [...removedImageIds, item.id];
+			}
+		} else {
+			URL.revokeObjectURL(item.url);
 		}
+
+		orderedItems = orderedItems.filter((_, itemIndex) => itemIndex !== index);
+		syncFilesFromOrder();
 	}
 
 	function restoreExisting(id: string) {
+		const image = existingImages.find((item) => item.id === id);
+		if (!image || orderedItems.length >= maxImages) return;
+
 		removedImageIds = removedImageIds.filter((imageId) => imageId !== id);
+		orderedItems = [
+			...orderedItems,
+			{ kind: 'existing', id: image.id, url: image.url }
+		];
 	}
 
-	function onDrop(event: DragEvent) {
+	function onDropFiles(event: DragEvent) {
 		event.preventDefault();
-		dragOver = false;
+		dragOverZone = false;
 		if (event.dataTransfer?.files?.length) {
 			addFiles(event.dataTransfer.files);
 		}
 	}
 
+	function onCardDragStart(event: DragEvent, index: number) {
+		dragIndex = index;
+		dropIndex = index;
+		event.dataTransfer?.setData('text/plain', String(index));
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+		}
+	}
+
+	function onCardDragOver(event: DragEvent, index: number) {
+		event.preventDefault();
+		if (dragIndex !== null) {
+			dropIndex = index;
+		}
+	}
+
+	function onCardDrop(event: DragEvent, index: number) {
+		event.preventDefault();
+		if (dragIndex !== null) {
+			moveItem(dragIndex, index);
+		}
+		clearDragState();
+	}
+
+	function clearDragState() {
+		dragIndex = null;
+		dropIndex = null;
+	}
+
 	onDestroy(() => {
-		for (const preview of previews) {
-			URL.revokeObjectURL(preview.url);
+		for (const item of orderedItems) {
+			if (item.kind === 'new') {
+				URL.revokeObjectURL(item.url);
+			}
 		}
 	});
 </script>
 
 <div>
 	<label for="edit-images" class="block text-sm font-semibold text-gray-700">Fotografije</label>
+	<p class="mt-1 text-xs text-gray-500">
+		Prva fotografija je naslovna. Povucite slike ili koristite strelice za promjenu redoslijeda.
+	</p>
 
-	{#if visibleExisting.length > 0 || previews.length > 0}
-		<ul class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-			{#each visibleExisting as image, index (image.id)}
-				<li class="group relative aspect-4/3 overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
-					<img src={image.url} alt="Postojeća fotografija {index + 1}" class="h-full w-full object-cover" />
-					<button
-						type="button"
-						class="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 hover:bg-red-600"
-						aria-label="Ukloni fotografiju"
-						onclick={() => removeExisting(image.id)}
-					>
-						×
-					</button>
-					<span class="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
-						{index + 1}
-					</span>
-				</li>
-			{/each}
-
-			{#each previews as preview, index (preview.id)}
-				<li class="group relative aspect-4/3 overflow-hidden rounded-xl border border-yellow-300 bg-gray-100">
-					<img src={preview.url} alt="Nova fotografija {index + 1}" class="h-full w-full object-cover" />
-					<button
-						type="button"
-						class="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 hover:bg-red-600"
-						aria-label="Ukloni fotografiju"
-						onclick={() => removeNewFile(index)}
-					>
-						×
-					</button>
-					<span class="absolute bottom-2 left-2 rounded bg-yellow-600 px-2 py-0.5 text-xs text-white">
-						Nova
-					</span>
-				</li>
+	{#if orderedItems.length > 0}
+		<ul class="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:grid-cols-3">
+			{#each orderedItems as item, index (item.kind === 'existing' ? item.id : item.id)}
+				<OrderedImageCard
+					url={item.url}
+					alt="Fotografija {index + 1}"
+					{index}
+					total={orderedItems.length}
+					badge={item.kind === 'new' ? 'Nova' : ''}
+					borderClass={item.kind === 'new' ? 'border-yellow-300' : 'border-gray-200'}
+					onRemove={() => removeAt(index)}
+					onMoveLeft={() => moveItem(index, index - 1)}
+					onMoveRight={() => moveItem(index, index + 1)}
+					isDragOver={dropIndex === index && dragIndex !== null && dragIndex !== index}
+					onDragStart={(event) => onCardDragStart(event, index)}
+					onDragOver={(event) => onCardDragOver(event, index)}
+					onDrop={(event) => onCardDrop(event, index)}
+					onDragEnd={clearDragState}
+				/>
 			{/each}
 		</ul>
 	{/if}
+
+	{#each orderedItems as item (item.kind === 'existing' ? `order-${item.id}` : `order-new-${item.id}`)}
+		<input
+			type="hidden"
+			name="image_order"
+			value={item.kind === 'existing' ? existingImageOrderToken(item.id) : IMAGE_ORDER_NEW}
+		/>
+	{/each}
 
 	{#each removedImageIds as id (id)}
 		<input type="hidden" name="remove_image_ids" value={id} />
 	{/each}
 
 	<div
-		class="mt-3 rounded-xl border-2 border-dashed px-4 py-5 text-center transition {dragOver
+		class="mt-3 rounded-xl border-2 border-dashed px-4 py-5 text-center transition {dragOverZone
 			? 'border-yellow-500 bg-yellow-50'
 			: 'border-gray-200 bg-gray-50/50'}"
-		ondragover={(e) => {
-			e.preventDefault();
-			dragOver = true;
+		ondragover={(event) => {
+			event.preventDefault();
+			dragOverZone = true;
 		}}
-		ondragleave={() => (dragOver = false)}
-		ondrop={onDrop}
+		ondragleave={() => (dragOverZone = false)}
+		ondrop={onDropFiles}
 		role="presentation"
 	>
 		<p class="text-sm text-gray-600">
@@ -186,7 +231,7 @@
 	{#if removedImageIds.length > 0}
 		<div class="mt-3 flex flex-wrap gap-2">
 			{#each removedImageIds as id (id)}
-				{@const image = existingImages.find((img) => img.id === id)}
+				{@const image = existingImages.find((item) => item.id === id)}
 				{#if image}
 					<button
 						type="button"

@@ -29,7 +29,8 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		.from('property_images')
 		.select('storage_path, sort_order')
 		.eq('property_id', params.id)
-		.order('sort_order');
+		.order('sort_order', { ascending: true })
+		.order('storage_path', { ascending: true });
 
 	const owner = await getProfile(supabase, property.owner_id);
 

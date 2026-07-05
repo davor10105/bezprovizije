@@ -112,19 +112,20 @@
 			</div>
 
 			{#if bedrooms != null}
-				<div class="flex items-center gap-1.5" title="Spavaće sobe">
+				<div class="flex items-center gap-1.5" title="Broj soba">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5 text-gray-400"
+						class="h-5 w-5 shrink-0 text-gray-400"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
+						aria-hidden="true"
 					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							stroke-width="2"
-							d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+							d="M3 10h18M3 10V8a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v2M3 10v7h18v-7M6 17v2M18 17v2M9 10V8.5A1.5 1.5 0 0 1 10.5 7h3A1.5 1.5 0 0 1 15 8.5V10"
 						/>
 					</svg>
 					<span class="font-semibold text-gray-800">{bedrooms}</span>
@@ -132,19 +133,20 @@
 			{/if}
 
 			{#if bathrooms != null}
-				<div class="flex items-center gap-1.5" title="Kupaonice">
+				<div class="flex items-center gap-1.5" title="Broj kupaonica">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5 text-gray-400"
+						class="h-5 w-5 shrink-0 text-gray-400"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
+						aria-hidden="true"
 					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							stroke-width="2"
-							d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+							d="M5 12h14M5 12V9a2 2 0 0 1 2-2h1M19 12V9a2 2 0 0 0-2-2h-1M7 20h10M5 12v2.5A2.5 2.5 0 0 0 7.5 17h1M19 12v2.5A2.5 2.5 0 0 1 16.5 17h-1"
 						/>
 					</svg>
 					<span class="font-semibold text-gray-800">{bathrooms}</span>

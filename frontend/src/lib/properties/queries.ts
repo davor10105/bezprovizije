@@ -13,6 +13,7 @@ import {
 	type LocationHierarchy,
 	sortLocationHierarchy
 } from '$lib/properties/location';
+import { compareImageSortOrder } from '$lib/properties/imageOrder';
 
 const FALLBACK_IMAGE =
 	'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80';
@@ -104,10 +105,10 @@ type DbUserProperty = {
 	property_images: { storage_path: string; sort_order: number }[] | null;
 };
 
+const PROPERTY_IMAGE_ORDER = { referencedTable: 'property_images', ascending: true } as const;
+
 export function toListingCard(property: DbProperty): ListingCard {
-	const images = [...(property.property_images ?? [])].sort(
-		(a, b) => a.sort_order - b.sort_order
-	);
+	const images = [...(property.property_images ?? [])].sort(compareImageSortOrder);
 	const firstImage = images[0]?.storage_path;
 
 	return {
@@ -130,9 +131,7 @@ export function toListingCard(property: DbProperty): ListingCard {
 }
 
 function toUserListing(property: DbUserProperty): UserListing {
-	const images = [...(property.property_images ?? [])].sort(
-		(a, b) => a.sort_order - b.sort_order
-	);
+	const images = [...(property.property_images ?? [])].sort(compareImageSortOrder);
 	const firstImage = images[0]?.storage_path;
 
 	return {
@@ -157,7 +156,8 @@ export async function fetchApprovedListings(supabase: SupabaseClient): Promise<L
        property_images (storage_path, sort_order)`
 		)
 		.eq('approval_status', 'approved')
-		.order('created_at', { ascending: false });
+		.order('created_at', { ascending: false })
+		.order('sort_order', PROPERTY_IMAGE_ORDER);
 
 	if (error) {
 		console.error('fetchApprovedListings failed:', error.message);
@@ -277,6 +277,7 @@ export async function fetchSearchListings(
 			query = query.order('created_at', { ascending: false });
 	}
 
+	query = query.order('sort_order', PROPERTY_IMAGE_ORDER);
 	query = query.range(from, to);
 
 	const { data, error, count } = await query;
@@ -333,7 +334,8 @@ export async function fetchUserListings(
        property_images (storage_path, sort_order)`
 		)
 		.eq('owner_id', userId)
-		.order('created_at', { ascending: false });
+		.order('created_at', { ascending: false })
+		.order('sort_order', PROPERTY_IMAGE_ORDER);
 
 	if (error) {
 		console.error('fetchUserListings failed:', error.message);
@@ -374,9 +376,7 @@ export async function fetchFavoriteListings(
 }
 
 function toAdminListing(property: DbAdminProperty): AdminListing {
-	const images = [...(property.property_images ?? [])].sort(
-		(a, b) => a.sort_order - b.sort_order
-	);
+	const images = [...(property.property_images ?? [])].sort(compareImageSortOrder);
 	const firstImage = images[0]?.storage_path;
 
 	return {
@@ -412,6 +412,7 @@ export async function fetchAdminListings(
 		.from('properties')
 		.select(ADMIN_LISTING_SELECT, { count: 'exact' })
 		.order('created_at', { ascending: false })
+		.order('sort_order', PROPERTY_IMAGE_ORDER)
 		.range(from, to);
 
 	if (options.approvalStatus === 'pending') {

@@ -493,8 +493,12 @@
 						href="/nekretnina/{property.id}"
 						class="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md sm:flex-row"
 					>
-						<div class="relative h-60 w-full shrink-0 sm:h-auto sm:w-72">
-							<img src={property.image} alt={property.title} class="h-full w-full object-cover" />
+						<div class="relative h-56 w-full shrink-0 overflow-hidden sm:w-72">
+							<img
+								src={property.image}
+								alt={property.title}
+								class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+							/>
 							<div
 								class="absolute top-3 left-3 rounded bg-yellow-500/90 px-2.5 py-1 text-xs font-bold tracking-wider text-white uppercase backdrop-blur-sm"
 							>

@@ -191,7 +191,9 @@
 		{#if manualPayment}
 			<div class="space-y-4 rounded-2xl border border-gray-200 bg-gray-50 p-5">
 				<div class="text-center">
-					<p class="text-sm font-semibold text-gray-700">Skenirajte QR kod u bankarskoj aplikaciji</p>
+					<p class="text-sm font-semibold text-gray-700">
+						Skenirajte QR kod u bankarskoj aplikaciji
+					</p>
 					<img
 						src={manualPayment.qrDataUrl}
 						alt="QR kod za bankovnu uplatu"
@@ -241,7 +243,8 @@
 					<div class="flex justify-between gap-4 border-b border-gray-200 pb-2">
 						<dt class="text-gray-500">Model i poziv na broj</dt>
 						<dd class="text-right font-mono text-xs text-gray-900 sm:text-sm">
-							{manualPayment.referenceModel} {manualPayment.reference}
+							{manualPayment.referenceModel}
+							{manualPayment.reference}
 						</dd>
 					</div>
 					<div class="flex justify-between gap-4 border-b border-gray-200 pb-2">
@@ -264,10 +267,9 @@
 				</dl>
 
 				<p class="rounded-xl bg-yellow-50 px-3 py-2 text-xs text-yellow-900">
-					Nakon uplate, BP tokeni ({manualPayment.bpAmount} BP) bit će ručno dodani na vaš račun
-					kad primimo potvrdu uplate. Referenca narudžbe: <span class="font-mono"
-						>{manualPayment.purchaseId.slice(0, 8)}</span
-					>.
+					Nakon uplate, BP tokeni ({manualPayment.bpAmount} BP) bit će dodani na Vaš račun kad primimo
+					potvrdu uplate. Referenca narudžbe:
+					<span class="font-mono">{manualPayment.purchaseId.slice(0, 8)}</span>.
 				</p>
 			</div>
 		{/if}

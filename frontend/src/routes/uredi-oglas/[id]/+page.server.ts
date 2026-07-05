@@ -3,6 +3,11 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import type { Actions, PageServerLoad } from './$types';
 import { isAdmin, isProfileComplete, requireAuth } from '$lib/auth';
 import { parseListingForm } from '$lib/properties/listingForm';
+import {
+	IMAGE_ORDER_EXISTING_PREFIX,
+	IMAGE_ORDER_NEW,
+	parseImageOrderTokens
+} from '$lib/properties/imageOrder';
 import { resolveLocationFromCoords } from '$lib/properties/location';
 import {
 	CORE_OPTIONAL_FIELDS,
@@ -92,12 +97,12 @@ export const actions: Actions = {
 
 		const { data: currentImages } = await supabase
 			.from('property_images')
-			.select('id, storage_path')
+			.select('id, storage_path, sort_order')
 			.eq('property_id', params.id);
 
-		const remainingExisting = (currentImages ?? []).filter(
-			(img) => !removeImageIds.includes(img.id)
-		);
+		const remainingExisting = (currentImages ?? [])
+			.filter((img) => !removeImageIds.includes(img.id))
+			.sort((a, b) => a.sort_order - b.sort_order);
 
 		const { payload, images, errors } = parseListingForm(formData, { imagesRequired: false });
 
@@ -157,11 +162,72 @@ export const actions: Actions = {
 			}
 		}
 
-		const startOrder = remainingExisting.length;
-		for (let i = 0; i < images.length; i++) {
-			const image = images[i];
+		const submittedImageOrder = parseImageOrderTokens(formData);
+		const imageOrder =
+			submittedImageOrder.length > 0
+				? submittedImageOrder
+				: [
+						...remainingExisting.map((img) => `${IMAGE_ORDER_EXISTING_PREFIX}${img.id}`),
+						...images.map(() => IMAGE_ORDER_NEW)
+					];
+		const remainingIds = new Set(remainingExisting.map((img) => img.id));
+		const orderedExistingIds = imageOrder
+			.filter((token) => token.startsWith(IMAGE_ORDER_EXISTING_PREFIX))
+			.map((token) => token.slice(IMAGE_ORDER_EXISTING_PREFIX.length));
+
+		if (
+			imageOrder.length !== remainingExisting.length + images.length ||
+			orderedExistingIds.length !== remainingExisting.length ||
+			orderedExistingIds.some((id) => !remainingIds.has(id))
+		) {
+			return fail(400, {
+				errors: { images: 'Redoslijed fotografija nije valjan. Osvježite stranicu i pokušajte ponovno.' }
+			});
+		}
+
+		let newFileIndex = 0;
+		let sortOrder = 0;
+
+		for (const token of imageOrder) {
+			if (token.startsWith(IMAGE_ORDER_EXISTING_PREFIX)) {
+				const imageId = token.slice(IMAGE_ORDER_EXISTING_PREFIX.length);
+				const { data: updated, error: sortError } = await supabase
+					.from('property_images')
+					.update({ sort_order: sortOrder })
+					.eq('id', imageId)
+					.eq('property_id', params.id)
+					.select('id');
+
+				if (sortError || !updated?.length) {
+					console.error('Image sort update failed:', sortError?.message ?? 'no rows updated');
+					return fail(500, {
+						errors: {
+							images:
+								'Ažuriranje redoslijeda fotografija nije uspjelo. Provjerite je li migracija baze primijenjena.'
+						}
+					});
+				}
+
+				sortOrder += 1;
+				continue;
+			}
+
+			if (token !== IMAGE_ORDER_NEW) {
+				return fail(400, {
+					errors: { images: 'Redoslijed fotografija nije valjan. Osvježite stranicu i pokušajte ponovno.' }
+				});
+			}
+
+			const image = images[newFileIndex];
+			if (!image) {
+				return fail(400, {
+					errors: { images: 'Redoslijed fotografija nije valjan. Osvježite stranicu i pokušajte ponovno.' }
+				});
+			}
+
+			newFileIndex += 1;
 			const ext = image.name.split('.').pop()?.toLowerCase() || 'jpg';
-			const storagePath = `${user.id}/${params.id}/${startOrder + i}-${crypto.randomUUID()}.${ext}`;
+			const storagePath = `${user.id}/${params.id}/${sortOrder}-${crypto.randomUUID()}.${ext}`;
 
 			const { error: uploadError } = await supabase.storage
 				.from('property-images')
@@ -180,7 +246,7 @@ export const actions: Actions = {
 			const { error: imageRowError } = await supabase.from('property_images').insert({
 				property_id: params.id,
 				storage_path: storagePath,
-				sort_order: startOrder + i
+				sort_order: sortOrder
 			});
 
 			if (imageRowError) {
@@ -189,6 +255,14 @@ export const actions: Actions = {
 					errors: { images: 'Spremanje fotografija nije uspjelo.' }
 				});
 			}
+
+			sortOrder += 1;
+		}
+
+		if (newFileIndex !== images.length) {
+			return fail(400, {
+				errors: { images: 'Redoslijed fotografija nije valjan. Osvježite stranicu i pokušajte ponovno.' }
+			});
 		}
 
 		redirect(
