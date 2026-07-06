@@ -5,45 +5,46 @@ import { PROPERTY_TYPE_SEARCH_LABELS } from '$lib/properties/schema';
 import { getProfile, getSafeUser, isAdmin, requireAuth } from '$lib/auth';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
-	const { data: property, error: loadError } = await supabase
-		.from('properties')
-		.select('*')
-		.eq('id', params.id)
-		.maybeSingle();
+	const [{ data: property, error: loadError }, { user }] = await Promise.all([
+		supabase.from('properties').select('*').eq('id', params.id).maybeSingle(),
+		getSafeUser(supabase)
+	]);
 
 	if (loadError || !property) {
 		error(404, 'Nekretnina nije pronađena');
 	}
 
-	const { user } = await getSafeUser(supabase);
 	const userId = user?.id ?? null;
 	const isOwner = userId === property.owner_id;
-	const viewerProfile = userId ? await getProfile(supabase, userId) : null;
-	const viewerIsAdmin = isAdmin(viewerProfile);
 
-	if (property.approval_status !== 'approved' && !isOwner && !viewerIsAdmin) {
-		error(404, 'Nekretnina nije pronađena');
+	if (property.approval_status !== 'approved' && !isOwner) {
+		const viewerProfile = userId ? await getProfile(supabase, userId) : null;
+		if (!isAdmin(viewerProfile)) {
+			error(404, 'Nekretnina nije pronađena');
+		}
 	}
 
-	const { data: images } = await supabase
-		.from('property_images')
-		.select('storage_path, sort_order')
-		.eq('property_id', params.id)
-		.order('sort_order', { ascending: true })
-		.order('storage_path', { ascending: true });
-
-	const owner = await getProfile(supabase, property.owner_id);
-
-	let isFavorited = false;
-	if (userId) {
-		const { data: favorite } = await supabase
-			.from('favorites')
-			.select('property_id')
-			.eq('user_id', userId)
+	const [{ data: images }, owner, viewerProfile, favoriteResult] = await Promise.all([
+		supabase
+			.from('property_images')
+			.select('storage_path, sort_order')
 			.eq('property_id', params.id)
-			.maybeSingle();
-		isFavorited = !!favorite;
-	}
+			.order('sort_order', { ascending: true })
+			.order('storage_path', { ascending: true }),
+		getProfile(supabase, property.owner_id),
+		userId ? getProfile(supabase, userId) : Promise.resolve(null),
+		userId
+			? supabase
+					.from('favorites')
+					.select('property_id')
+					.eq('user_id', userId)
+					.eq('property_id', params.id)
+					.maybeSingle()
+			: Promise.resolve({ data: null })
+	]);
+
+	const viewerIsAdmin = isAdmin(viewerProfile);
+	const isFavorited = !!favoriteResult.data;
 
 	const imageUrls = (images ?? []).map(
 		(img) =>

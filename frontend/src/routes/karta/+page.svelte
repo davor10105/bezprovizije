@@ -40,6 +40,31 @@
 		setter(Number.isFinite(value) && value >= 0 ? value : null);
 	}
 
+	function resetFilters() {
+		minPrice = null;
+		maxPrice = null;
+		minSqm = null;
+		maxSqm = null;
+		Object.keys(typeFilters).forEach((k) => (typeFilters[k] = true));
+	}
+
+	function openFilters() {
+		selectedProperty = null;
+		isFilterOpen = true;
+	}
+
+	function closeFilters() {
+		isFilterOpen = false;
+	}
+
+	function toggleFilters() {
+		if (isFilterOpen) {
+			closeFilters();
+			return;
+		}
+		openFilters();
+	}
+
 	// Checkbox state za tipove nekretnina
 	let typeFilters = $state(
 		Object.fromEntries(data.propertyTypes.map((type) => [type, true])) as Record<string, boolean>
@@ -276,7 +301,8 @@
 		<div class="relative">
 			<button
 				class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 font-bold text-gray-800 shadow-md transition-colors hover:bg-gray-50 hover:text-yellow-600"
-				onclick={() => (isFilterOpen = !isFilterOpen)}
+				onclick={toggleFilters}
+				aria-expanded={isFilterOpen}
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -294,120 +320,12 @@
 				<p class="hidden md:inline">Filteri</p>
 			</button>
 
-			<!-- Filter Dropdown -->
+			<!-- Filter dropdown (desktop) -->
 			{#if isFilterOpen}
 				<div
-					class="absolute top-14 left-0 w-80 rounded-2xl border border-gray-100 bg-white p-5 shadow-xl"
+					class="absolute top-14 left-0 hidden w-80 rounded-2xl border border-gray-100 bg-white p-5 shadow-xl md:block"
 				>
-					<div class="mb-5 flex items-center justify-between">
-						<h3 class="text-lg font-bold text-gray-900">Filteri</h3>
-						<button
-							class="text-sm font-semibold text-gray-500 underline hover:text-yellow-600"
-							onclick={() => {
-								minPrice = null;
-								maxPrice = null;
-								minSqm = null;
-								maxSqm = null;
-								Object.keys(typeFilters).forEach((k) => (typeFilters[k] = true));
-							}}>Poništi</button
-						>
-					</div>
-
-					<div class="space-y-6">
-						<!-- Vrsta nekretnine -->
-						<div>
-							<label class="mb-3 block text-sm font-bold text-gray-700">Tip nekretnine</label>
-							<div class="grid grid-cols-2 gap-3">
-								{#each Object.keys(typeFilters) as type}
-									<label class="group flex cursor-pointer items-center gap-2 text-sm">
-										<input
-											type="checkbox"
-											bind:checked={typeFilters[type]}
-											class="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
-										/>
-										<span class="transition-colors group-hover:text-yellow-700">{type}</span>
-									</label>
-								{/each}
-							</div>
-						</div>
-
-						<!-- Cijena -->
-						<div>
-							<label class="mb-3 block text-sm font-bold text-gray-700">Cijena (€)</label>
-							<div class="grid grid-cols-2 gap-3">
-								<div>
-									<label for="minPrice" class="mb-1.5 block text-xs font-medium text-gray-500"
-										>Od</label
-									>
-									<input
-										id="minPrice"
-										type="number"
-										min="0"
-										value={minPrice ?? ''}
-										placeholder="Min"
-										oninput={(e) => onFilterNumberInput((v) => (minPrice = v), e)}
-										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-									/>
-								</div>
-								<div>
-									<label for="maxPrice" class="mb-1.5 block text-xs font-medium text-gray-500"
-										>Do</label
-									>
-									<input
-										id="maxPrice"
-										type="number"
-										min="0"
-										value={maxPrice ?? ''}
-										placeholder="Max"
-										oninput={(e) => onFilterNumberInput((v) => (maxPrice = v), e)}
-										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-									/>
-								</div>
-							</div>
-						</div>
-
-						<!-- Kvadratura -->
-						<div>
-							<label class="mb-3 block text-sm font-bold text-gray-700">Površina (m²)</label>
-							<div class="grid grid-cols-2 gap-3">
-								<div>
-									<label for="minSqm" class="mb-1.5 block text-xs font-medium text-gray-500"
-										>Od</label
-									>
-									<input
-										id="minSqm"
-										type="number"
-										min="0"
-										value={minSqm ?? ''}
-										placeholder="Min"
-										oninput={(e) => onFilterNumberInput((v) => (minSqm = v), e)}
-										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-									/>
-								</div>
-								<div>
-									<label for="maxSqm" class="mb-1.5 block text-xs font-medium text-gray-500"
-										>Do</label
-									>
-									<input
-										id="maxSqm"
-										type="number"
-										min="0"
-										value={maxSqm ?? ''}
-										placeholder="Max"
-										oninput={(e) => onFilterNumberInput((v) => (maxSqm = v), e)}
-										class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
-									/>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<button
-						class="mt-8 w-full rounded-xl bg-black py-3 font-bold text-white shadow-md transition-colors hover:bg-yellow-500 hover:text-black"
-						onclick={() => (isFilterOpen = false)}
-					>
-						Prikaži {filteredProperties.length} rezultata
-					</button>
+					{@render filterPanel('')}
 				</div>
 			{/if}
 		</div>
@@ -434,6 +352,47 @@
 			<p class="hidden md:inline">{mapStyle === 'street' ? 'Satelit' : 'Ulice'}</p>
 		</button>
 	</div>
+	<!-- Mobile filter drawer -->
+	{#if isFilterOpen}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="absolute inset-0 z-[1100] bg-black/50 backdrop-blur-sm transition-opacity duration-300 md:hidden"
+			onclick={closeFilters}
+		></div>
+		<aside
+			class="absolute bottom-0 left-0 z-[1200] flex max-h-[85vh] w-full flex-col rounded-t-3xl bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.2)] transition-transform duration-300 ease-in-out md:hidden"
+			aria-label="Filteri"
+		>
+			<div class="relative flex shrink-0 items-center justify-center py-3">
+				<div class="h-1.5 w-12 rounded-full bg-gray-300" aria-hidden="true"></div>
+				<button
+					type="button"
+					class="absolute top-2 right-4 rounded-full bg-gray-100 p-2 text-gray-600 transition-colors hover:bg-gray-200"
+					aria-label="Zatvori filtere"
+					onclick={closeFilters}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						><path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/></svg
+					>
+				</button>
+			</div>
+			<div class="overflow-y-auto px-5 pb-5">
+				{@render filterPanel('mobile-')}
+			</div>
+		</aside>
+	{/if}
+
 	<!-- MOBILNI DRAWER (Prikazuje se samo na mobitelima) -->
 	<!-- Zatamnjenje pozadine (Backdrop) -->
 	{#if selectedProperty}
@@ -513,3 +472,108 @@
 		{/if}
 	</aside>
 </div>
+
+{#snippet filterPanel(idPrefix: string)}
+	<div class="mb-5 flex items-center justify-between">
+		<h3 class="text-lg font-bold text-gray-900">Filteri</h3>
+		<button
+			type="button"
+			class="text-sm font-semibold text-gray-500 underline hover:text-yellow-600"
+			onclick={resetFilters}>Poništi</button
+		>
+	</div>
+
+	<div class="space-y-6">
+		<div>
+			<span class="mb-3 block text-sm font-bold text-gray-700">Tip nekretnine</span>
+			<div class="grid grid-cols-2 gap-3">
+				{#each Object.keys(typeFilters) as type}
+					<label class="group flex cursor-pointer items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							bind:checked={typeFilters[type]}
+							class="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+						/>
+						<span class="transition-colors group-hover:text-yellow-700">{type}</span>
+					</label>
+				{/each}
+			</div>
+		</div>
+
+		<div>
+			<span class="mb-3 block text-sm font-bold text-gray-700">Cijena (€)</span>
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<label for="{idPrefix}minPrice" class="mb-1.5 block text-xs font-medium text-gray-500"
+						>Od</label
+					>
+					<input
+						id="{idPrefix}minPrice"
+						type="number"
+						min="0"
+						value={minPrice ?? ''}
+						placeholder="Min"
+						oninput={(e) => onFilterNumberInput((v) => (minPrice = v), e)}
+						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+					/>
+				</div>
+				<div>
+					<label for="{idPrefix}maxPrice" class="mb-1.5 block text-xs font-medium text-gray-500"
+						>Do</label
+					>
+					<input
+						id="{idPrefix}maxPrice"
+						type="number"
+						min="0"
+						value={maxPrice ?? ''}
+						placeholder="Max"
+						oninput={(e) => onFilterNumberInput((v) => (maxPrice = v), e)}
+						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+					/>
+				</div>
+			</div>
+		</div>
+
+		<div>
+			<span class="mb-3 block text-sm font-bold text-gray-700">Površina (m²)</span>
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<label for="{idPrefix}minSqm" class="mb-1.5 block text-xs font-medium text-gray-500"
+						>Od</label
+					>
+					<input
+						id="{idPrefix}minSqm"
+						type="number"
+						min="0"
+						value={minSqm ?? ''}
+						placeholder="Min"
+						oninput={(e) => onFilterNumberInput((v) => (minSqm = v), e)}
+						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+					/>
+				</div>
+				<div>
+					<label for="{idPrefix}maxSqm" class="mb-1.5 block text-xs font-medium text-gray-500"
+						>Do</label
+					>
+					<input
+						id="{idPrefix}maxSqm"
+						type="number"
+						min="0"
+						value={maxSqm ?? ''}
+						placeholder="Max"
+						oninput={(e) => onFilterNumberInput((v) => (maxSqm = v), e)}
+						class="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-yellow-500"
+					/>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<button
+		type="button"
+		class="mt-8 w-full rounded-xl bg-black py-3 font-bold text-white shadow-md transition-colors hover:bg-yellow-500 hover:text-black"
+		onclick={closeFilters}
+	>
+		Prikaži {filteredProperties.length} rezultata
+	</button>
+{/snippet}
