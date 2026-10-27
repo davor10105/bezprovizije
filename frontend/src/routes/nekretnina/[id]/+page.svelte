@@ -11,7 +11,7 @@
 
 	const property = $derived(data.property);
 	const ownerInfo = $derived({
-		fullName: data.owner?.full_name ?? 'Oglašivač',
+		username: data.owner?.username?.trim() || 'Oglašivač',
 		phone: data.owner?.phone ?? '',
 		email: data.owner?.email ?? '',
 		publishedDate: new Date(property.created_at).toLocaleDateString('hr-HR'),
@@ -336,6 +336,21 @@
 			</p>
 
 			<div class="mt-3 flex flex-wrap gap-2">
+				{#if data.isOwner || data.isAdmin}
+					<a
+						href="/uredi-oglas/{property.id}"
+						class="inline-flex items-center gap-2 rounded-full border-2 border-yellow-500 bg-yellow-50 px-4 py-2 text-sm font-semibold text-yellow-700 transition hover:bg-yellow-100"
+					>
+						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"
+							/>
+						</svg>
+						Uredi oglas
+					</a>
+				{/if}
 				{#if data.isLoggedIn}
 					<form
 						method="post"
@@ -469,14 +484,10 @@
 						<div
 							class="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 text-lg font-bold text-yellow-600"
 						>
-							{ownerInfo.fullName
-								.split(' ')
-								.map((n) => n[0])
-								.join('')
-								.slice(0, 2)}
+							{ownerInfo.username.slice(0, 2).toUpperCase()}
 						</div>
 						<div>
-							<p class="font-bold text-gray-900">{ownerInfo.fullName}</p>
+							<p class="font-bold text-gray-900">@{ownerInfo.username}</p>
 							<p class="text-sm text-gray-500">Objavljeno {ownerInfo.publishedDate}</p>
 						</div>
 					</div>

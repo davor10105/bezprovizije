@@ -112,7 +112,7 @@ export async function getProfile(
 ): Promise<Profile | null> {
 	const { data, error } = await supabase
 		.from('profiles')
-		.select('id, full_name, phone, email, role, bp_balance, created_at, updated_at')
+		.select('id, full_name, username, phone, email, role, bp_balance, created_at, updated_at')
 		.eq('id', userId)
 		.maybeSingle();
 
@@ -127,10 +127,10 @@ export async function getProfile(
 export async function saveProfile(
 	supabase: SupabaseClient,
 	userId: string,
-	{ full_name, phone }: { full_name: string; phone: string }
+	{ full_name, username, phone }: { full_name: string; username: string; phone: string }
 ) {
 	return supabase.from('profiles').upsert(
-		{ id: userId, full_name, phone },
+		{ id: userId, full_name, username, phone },
 		{ onConflict: 'id' }
 	);
 }
@@ -145,7 +145,11 @@ export function hasRole(profile: Profile | null, role: UserRole): boolean {
 
 export function isProfileComplete(profile: Profile | null): boolean {
 	if (!profile) return false;
-	return profile.full_name.trim().length >= 2 && profile.phone.trim().length > 0;
+	return (
+		profile.full_name.trim().length >= 2 &&
+		isValidUsername(profile.username) &&
+		profile.phone.trim().length > 0
+	);
 }
 
 export async function requireAuth(supabase: SupabaseClient, redirectTo = '/prijava?action=login') {
@@ -193,4 +197,14 @@ const PHONE_PATTERN = /^\+?[\d\s\-()]{8,20}$/;
 
 export function isValidPhone(phone: string): boolean {
 	return PHONE_PATTERN.test(phone.trim());
+}
+
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/;
+
+export function isValidUsername(username: string): boolean {
+	return USERNAME_PATTERN.test(username.trim());
+}
+
+export function normalizeUsername(username: string): string {
+	return username.trim();
 }

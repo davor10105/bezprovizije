@@ -92,6 +92,8 @@ export const actions: Actions = {
 			return fail(403, { errors: { form: 'Nemate dozvolu za uređivanje ovog oglasa.' } });
 		}
 
+		const ownerId = existing.owner_id as string;
+
 		const formData = await request.formData();
 		const removeImageIds = formData.getAll('remove_image_ids').map(String);
 
@@ -227,7 +229,7 @@ export const actions: Actions = {
 
 			newFileIndex += 1;
 			const ext = image.name.split('.').pop()?.toLowerCase() || 'jpg';
-			const storagePath = `${user.id}/${params.id}/${sortOrder}-${crypto.randomUUID()}.${ext}`;
+			const storagePath = `${ownerId}/${params.id}/${sortOrder}-${crypto.randomUUID()}.${ext}`;
 
 			const { error: uploadError } = await supabase.storage
 				.from('property-images')

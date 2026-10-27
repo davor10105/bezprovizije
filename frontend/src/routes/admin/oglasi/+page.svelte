@@ -100,6 +100,12 @@
 							</button>
 						</form>
 						<a
+							href="/uredi-oglas/{listing.id}"
+							class="w-full rounded-xl border-2 border-gray-300 px-4 py-2.5 text-center text-sm font-semibold text-gray-800 hover:border-yellow-400 hover:bg-yellow-50"
+						>
+							Uredi
+						</a>
+						<a
 							href="/nekretnina/{listing.id}"
 							class="text-center text-xs font-medium text-gray-600 underline hover:text-yellow-700"
 						>
@@ -160,7 +166,12 @@
 								</span>
 							</td>
 							<td class="px-4 py-3">
-								<div class="flex gap-2">
+								<div class="flex flex-wrap gap-3">
+									<a
+										href="/uredi-oglas/{listing.id}"
+										class="text-xs font-semibold text-yellow-700 hover:underline"
+										>Uredi</a
+									>
 									{#if listing.approval_status !== 'approved'}
 										<form
 											method="POST"

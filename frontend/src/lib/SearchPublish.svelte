@@ -1,5 +1,6 @@
 <script lang="ts">
 	import rijekaFirst from '$lib/assets/rijeka3-1.jpg';
+	import logo from '$lib/assets/favicon.png';
 	import MapPreview from '$lib/MapPreview.svelte';
 	import type { ListingCard } from '$lib/properties/queries';
 	import type { LocationHierarchy } from '$lib/properties/location';
@@ -62,7 +63,7 @@
 			class="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6 py-12 md:flex-row md:gap-8 md:px-4"
 		>
 			<div class="flex-1 rounded-2xl bg-white/95 p-6 shadow-xl backdrop-blur md:p-8">
-				<h1 class="mb-6 text-2xl font-bold text-gray-800 md:text-3xl">Pronađite svoj novi dom</h1>
+				<h1 class="mb-6 text-2xl font-bold text-gray-800 md:text-3xl">Pronađite nekretnine <img src={logo} alt="BezProvizije.hr" class="h-12 w-auto inline" /> agencijskih provizija</h1>
 
 				<form method="GET" action="/pretraga" class="space-y-5 text-left">
 					<div class="flex rounded-lg bg-gray-200 p-1">
