@@ -96,7 +96,8 @@
 
 	async function searchAddress() {
 		const q = searchQuery.trim();
-		if (q.length < 3) {
+		// Libar search requires at least 5 characters
+		if (q.length < 5) {
 			suggestions = [];
 			showSuggestions = false;
 			return;
@@ -119,15 +120,37 @@
 
 	function onSearchInput() {
 		clearTimeout(searchDebounce);
-		searchDebounce = setTimeout(searchAddress, 300);
+		searchDebounce = setTimeout(searchAddress, 450);
 	}
 
-	function selectSuggestion(item: GeocodeResult) {
-		address = item.short_name;
-		searchQuery = item.short_name;
+	async function selectSuggestion(item: GeocodeResult) {
 		showSuggestions = false;
 		suggestions = [];
-		setMarkerPosition(item.lat, item.lng);
+
+		let resolved = item;
+		// Search hits omit coordinates — resolve the chosen address once on select.
+		if (!item.lat || !item.lng) {
+			searchLoading = true;
+			try {
+				const res = await fetch(`/api/geocode?id=${encodeURIComponent(item.id)}`);
+				if (res.ok) {
+					const details: GeocodeResult[] = await res.json();
+					if (details[0]) resolved = details[0];
+				}
+			} finally {
+				searchLoading = false;
+			}
+		}
+
+		if (!resolved.lat || !resolved.lng) {
+			address = resolved.short_name;
+			searchQuery = resolved.short_name;
+			return;
+		}
+
+		address = resolved.short_name;
+		searchQuery = resolved.short_name;
+		setMarkerPosition(resolved.lat, resolved.lng);
 	}
 
 	function hideSuggestions() {
@@ -193,7 +216,7 @@
 				if (suggestions.length > 0) showSuggestions = true;
 			}}
 			onblur={hideSuggestions}
-			placeholder="npr. Ilica 100, Zagreb"
+			placeholder="npr. Vinka Zamlića 14, Opatija"
 			autocomplete="off"
 			class="mt-1.5 block w-full rounded-xl border border-gray-300 px-4 py-3 shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
 		/>
@@ -239,7 +262,8 @@
 	></div>
 
 	<p class="text-xs text-gray-500">
-		Kliknite na kartu ili povucite marker za točnu lokaciju. Adresu možete pretražiti iznad.
+		Upišite barem 5 znakova za prijedloge službenih adresa. Kliknite na kartu ili povucite marker
+		za točnu lokaciju.
 	</p>
 
 	{#if lat !== null && lng !== null}

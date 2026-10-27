@@ -8,7 +8,7 @@ import {
 	IMAGE_ORDER_NEW,
 	parseImageOrderTokens
 } from '$lib/properties/imageOrder';
-import { resolveLocationFromCoords } from '$lib/properties/location';
+import { resolveLibarLocationFromCoords } from '$lib/server/libar';
 import {
 	CORE_OPTIONAL_FIELDS,
 	LISTING_TYPE_LABELS,
@@ -121,7 +121,7 @@ export const actions: Actions = {
 		}
 
 		const needsReapproval = !isAdmin(profile);
-		const location = await resolveLocationFromCoords(fetch, payload.lat, payload.lng);
+		const location = await resolveLibarLocationFromCoords(payload.lat, payload.lng);
 
 		const { error: updateError } = await supabase
 			.from('properties')
