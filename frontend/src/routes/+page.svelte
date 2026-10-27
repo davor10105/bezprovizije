@@ -21,13 +21,12 @@
 				<h1
 					class="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl md:leading-[1.1]"
 				>
-					Spajamo ljude s <br class="hidden sm:block" />
-					<span class="text-text-secondary">njihovim domom.</span>
+					Oglasnik nekretnina <br class="hidden sm:block" />
+					<span class="text-text-secondary">bez agencijskih provizija</span>
 				</h1>
 
 				<p class="mt-6 text-lg leading-relaxed text-gray-600 md:text-xl">
-					Oglasite prodaju svoje nekretnine ili pregledajte oglase koje su objavili isključivo
-					vlasnici. Povežite se direktno, brzo i potpuno slobodno od plaćanja agencijskih provizija.
+					Oglasite prodaju svoje nekretnine ili pregledajte oglase koje su objavili vlasnici. Povežite se direktno, brzo i potpuno slobodno od plaćanja agencijskih provizija.
 				</p>
 			</div>
 

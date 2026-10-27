@@ -6,6 +6,7 @@ declare module '$env/static/private' {
 	export const STRIPE_SECRET_KEY: string;
 	export const STRIPE_WEBHOOK_SECRET: string;
 	export const SUPABASE_SERVICE_ROLE_KEY: string;
+	export const LIBAR_API_KEY: string;
 }
 
 declare module '*.svg?raw' {

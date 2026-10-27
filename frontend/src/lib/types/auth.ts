@@ -3,6 +3,7 @@ export type UserRole = 'user' | 'admin';
 export type Profile = {
 	id: string;
 	full_name: string;
+	username: string;
 	phone: string;
 	email: string | null;
 	role: UserRole;

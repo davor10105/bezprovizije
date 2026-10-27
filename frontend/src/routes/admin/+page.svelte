@@ -119,6 +119,9 @@
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0">
 					<p class="truncate font-semibold text-gray-900">{user.full_name || '—'}</p>
+					<p class="mt-0.5 truncate text-sm text-gray-500">
+						{user.username ? `@${user.username}` : 'Bez korisničkog imena'}
+					</p>
 					<p class="mt-0.5 text-sm text-gray-600">{user.phone || '—'}</p>
 				</div>
 				{@render roleBadge(user)}
@@ -151,6 +154,7 @@
 		<thead class="bg-gray-50">
 			<tr>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Ime i prezime</th>
+				<th class="px-4 py-3 text-left font-semibold text-gray-700">Korisničko ime</th>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Telefon</th>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">Uloga</th>
 				<th class="px-4 py-3 text-left font-semibold text-gray-700">BP stanje</th>
@@ -162,6 +166,9 @@
 			{#each data.users as user (user.id)}
 				<tr>
 					<td class="px-4 py-3 text-gray-900">{user.full_name || '—'}</td>
+					<td class="px-4 py-3 text-gray-600">
+						{user.username ? `@${user.username}` : '—'}
+					</td>
 					<td class="px-4 py-3 text-gray-600">{user.phone || '—'}</td>
 					<td class="px-4 py-3">{@render roleBadge(user)}</td>
 					<td class="px-4 py-3">

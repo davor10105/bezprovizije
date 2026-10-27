@@ -8,7 +8,7 @@ import {
 	IMAGE_ORDER_NEW,
 	parseImageOrderTokens
 } from '$lib/properties/imageOrder';
-import { resolveLocationFromCoords } from '$lib/properties/location';
+import { resolveLibarLocationFromCoords } from '$lib/server/libar';
 import {
 	CORE_OPTIONAL_FIELDS,
 	LISTING_TYPE_LABELS,
@@ -92,6 +92,8 @@ export const actions: Actions = {
 			return fail(403, { errors: { form: 'Nemate dozvolu za uređivanje ovog oglasa.' } });
 		}
 
+		const ownerId = existing.owner_id as string;
+
 		const formData = await request.formData();
 		const removeImageIds = formData.getAll('remove_image_ids').map(String);
 
@@ -119,7 +121,7 @@ export const actions: Actions = {
 		}
 
 		const needsReapproval = !isAdmin(profile);
-		const location = await resolveLocationFromCoords(fetch, payload.lat, payload.lng);
+		const location = await resolveLibarLocationFromCoords(payload.lat, payload.lng);
 
 		const { error: updateError } = await supabase
 			.from('properties')
@@ -227,7 +229,7 @@ export const actions: Actions = {
 
 			newFileIndex += 1;
 			const ext = image.name.split('.').pop()?.toLowerCase() || 'jpg';
-			const storagePath = `${user.id}/${params.id}/${sortOrder}-${crypto.randomUUID()}.${ext}`;
+			const storagePath = `${ownerId}/${params.id}/${sortOrder}-${crypto.randomUUID()}.${ext}`;
 
 			const { error: uploadError } = await supabase.storage
 				.from('property-images')

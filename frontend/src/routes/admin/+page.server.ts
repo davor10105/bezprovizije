@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 
 	const { data: users, error, count } = await supabase
 		.from('profiles')
-		.select('id, full_name, phone, role, bp_balance, created_at', { count: 'exact' })
+		.select('id, full_name, username, phone, role, bp_balance, created_at', { count: 'exact' })
 		.order('created_at', { ascending: false })
 		.range(from, to);
 

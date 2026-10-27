@@ -78,7 +78,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		},
 		owner: owner
 			? {
-					full_name: owner.full_name,
+					username: owner.username,
 					phone: owner.phone,
 					email: owner.email
 				}

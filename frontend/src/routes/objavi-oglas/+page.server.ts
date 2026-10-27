@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { isAdmin, isProfileComplete, requireAuth } from '$lib/auth';
 import { parseListingForm } from '$lib/properties/listingForm';
-import { resolveLocationFromCoords } from '$lib/properties/location';
+import { resolveLibarLocationFromCoords } from '$lib/server/libar';
 import { fetchTokenSettings, listingBpCost } from '$lib/tokens/queries';
 import {
 	CORE_OPTIONAL_FIELDS,
@@ -57,7 +57,7 @@ export const actions: Actions = {
 			});
 		}
 
-		const location = await resolveLocationFromCoords(fetch, payload.lat, payload.lng);
+		const location = await resolveLibarLocationFromCoords(payload.lat, payload.lng);
 
 		const { data: property, error: propertyError } = await supabase
 			.from('properties')

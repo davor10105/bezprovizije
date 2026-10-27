@@ -99,7 +99,8 @@
 			</h1>
 			<p class="mt-2 text-sm text-gray-600">
 				{#if data.needsSetup}
-					Unesite kontakt podatke koji će se prikazivati na vašim oglasima.
+					Unesite korisničko ime i kontakt podatke. Na oglasima se javno prikazuje samo
+					korisničko ime.
 				{:else}
 					Upravljajte oglasima i podacima profila.
 				{/if}
@@ -419,8 +420,35 @@
 						class="mt-1.5 block w-full rounded-xl border border-gray-300 px-4 py-3 shadow-sm transition-colors focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
 						placeholder="Ivan Horvat"
 					/>
+					<p class="mt-1 text-xs text-gray-500">Vidljivo samo Vama i administratorima.</p>
 					{#if formErrors.fullName}
 						<p class="mt-1 text-sm text-red-600">{formErrors.fullName}</p>
+					{/if}
+				</div>
+
+				<div>
+					<label for="username" class="block text-sm font-semibold text-gray-700"
+						>Korisničko ime</label
+					>
+					<input
+						id="username"
+						name="username"
+						type="text"
+						autocomplete="username"
+						required
+						minlength="3"
+						maxlength="24"
+						pattern="[a-zA-Z0-9_]+"
+						value={form?.username ?? data.profile?.username ?? ''}
+						class="mt-1.5 block w-full rounded-xl border border-gray-300 px-4 py-3 shadow-sm transition-colors focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:outline-none sm:text-sm"
+						placeholder="ivan_horvat"
+					/>
+					<p class="mt-1 text-xs text-gray-500">
+						Prikazuje se na Vašim oglasima umjesto imena i prezimena (3–24 znaka, slova, brojevi
+						ili _).
+					</p>
+					{#if formErrors.username}
+						<p class="mt-1 text-sm text-red-600">{formErrors.username}</p>
 					{/if}
 				</div>
 

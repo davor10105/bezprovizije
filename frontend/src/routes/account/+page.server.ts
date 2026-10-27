@@ -1,6 +1,14 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { isProfileComplete, isValidPhone, requireAuth, saveProfile, getSafeUser } from '$lib/auth';
+import {
+	isProfileComplete,
+	isValidPhone,
+	isValidUsername,
+	normalizeUsername,
+	requireAuth,
+	saveProfile,
+	getSafeUser
+} from '$lib/auth';
 import { fetchFavoriteListings, fetchUserListings } from '$lib/properties/queries';
 import { LISTING_TYPE_LABELS, PROPERTY_TYPE_CONFIG } from '$lib/properties/schema';
 
@@ -39,6 +47,7 @@ export const actions: Actions = {
 	update: async ({ request, locals: { supabase } }) => {
 		const formData = await request.formData();
 		const fullName = (formData.get('fullName') as string)?.trim();
+		const username = normalizeUsername((formData.get('username') as string) ?? '');
 		const phone = (formData.get('phone') as string)?.trim();
 
 		const errors: Record<string, string> = {};
@@ -47,35 +56,64 @@ export const actions: Actions = {
 			errors.fullName = 'Unesite puno ime i prezime.';
 		}
 
+		if (!isValidUsername(username)) {
+			errors.username =
+				'Korisničko ime mora imati 3–24 znaka (slova, brojevi ili _).';
+		}
+
 		if (!phone || !isValidPhone(phone)) {
 			errors.phone = 'Unesite ispravan broj telefona.';
 		}
 
 		if (Object.keys(errors).length > 0) {
-			return fail(400, { errors, fullName, phone });
+			return fail(400, { errors, fullName, username, phone });
 		}
 
 		const { user, error: userError } = await getSafeUser(supabase);
 
 		if (userError || !user) {
-			return fail(401, { errors: { form: 'Niste prijavljeni.' }, fullName, phone });
+			return fail(401, { errors: { form: 'Niste prijavljeni.' }, fullName, username, phone });
+		}
+
+		const { data: taken } = await supabase
+			.from('profiles')
+			.select('id')
+			.ilike('username', username)
+			.neq('id', user.id)
+			.maybeSingle();
+
+		if (taken) {
+			return fail(400, {
+				errors: { username: 'To korisničko ime je već zauzeto.' },
+				fullName,
+				username,
+				phone
+			});
 		}
 
 		const { error } = await saveProfile(supabase, user.id, {
 			full_name: fullName,
+			username,
 			phone
 		});
 
 		if (error) {
 			console.error('Profile save failed:', error.message);
-			return fail(500, {
-				errors: { form: 'Spremanje nije uspjelo. Pokušajte ponovno.' },
+			const isUniqueViolation = error.code === '23505';
+			return fail(isUniqueViolation ? 400 : 500, {
+				errors: {
+					form: isUniqueViolation
+						? 'To korisničko ime je već zauzeto.'
+						: 'Spremanje nije uspjelo. Pokušajte ponovno.',
+					...(isUniqueViolation ? { username: 'To korisničko ime je već zauzeto.' } : {})
+				},
 				fullName,
+				username,
 				phone
 			});
 		}
 
-		return { success: true, fullName, phone };
+		return { success: true, fullName, username, phone };
 	},
 
 	signout: async ({ locals: { supabase } }) => {
